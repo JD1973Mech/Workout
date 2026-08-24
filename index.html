@@ -1,0 +1,2180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>Workout Timer</title>
+
+<!-- Home screen / "Add to Home Screen" experience (iOS Safari) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Workout">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#111827">
+<style>
+  /* 100% offline — gebruikt ingebouwde Apple systeemlettertypen */
+  :root {
+    --font-ui: -apple-system, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+    --font-mono: "SF Mono", "Courier New", monospace;
+  }
+</style>
+<style>
+  :root {
+    --bg: #F4F6F8;
+    --green: #059669;
+    --green-light: #D1FAE5;
+    --yellow: #D97706;
+    --yellow-light: #FEF3C7;
+    --purple: #4F46E5;
+    --pink: #DB2777;
+    --red: #DC2626;
+    --text: #111827;
+    --text2: #374151;
+    --muted: #6B7280;
+    --card: #FFFFFF;
+    --border: #E5E7EB;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: var(--bg);
+    font-family: var(--font-ui);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding-bottom: 48px;
+  }
+  /* HEADER */
+  .header {
+    width:100%; max-width:520px; padding:36px 24px 0;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .logo { font-size:22px; font-weight:800; letter-spacing:1px; color:var(--text); }
+  .logo span { color: var(--green); }
+  .logo-sub { color: var(--muted); font-size:11px; font-weight:700; letter-spacing:2px; margin-top:3px; }
+  .btn-import {
+    background: var(--card); border: 1.5px solid var(--border);
+    color: var(--text2); border-radius:12px; padding:10px 16px;
+    font-size:12px; font-family:var(--font-ui); font-weight:700; letter-spacing:1px;
+    cursor:pointer; display:flex; align-items:center; gap:6px;
+    box-shadow: var(--shadow); transition: background 0.2s;
+  }
+  .btn-import:active { background: #F3F4F6; }
+
+  /* TABS */
+  .tabs {
+    display:flex; gap:4px; margin-top:22px;
+    background: #E5E7EB; border-radius:14px; padding:4px;
+    width:calc(100% - 48px); max-width:472px;
+  }
+  .tab {
+    flex:1; padding:10px 0; border-radius:10px; border:none;
+    background:transparent; color:var(--muted);
+    font-family:var(--font-ui); font-weight:700; font-size:12px; letter-spacing:1.5px;
+    cursor:pointer; transition:all 0.2s;
+  }
+  .tab.active { background:#FFFFFF; color:var(--text); box-shadow:0 1px 4px rgba(0,0,0,0.1); }
+
+  /* SESSION SELECT */
+  .session-screen {
+    width:100%; max-width:520px; padding:24px 24px 0;
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+  }
+  .session-title { font-size:11px; font-weight:700; letter-spacing:3px; color:var(--muted); align-self:flex-start; }
+
+  .bookend-toggles {
+    display:flex; gap:10px; width:100%; max-width:472px; margin:2px 0 4px;
+  }
+  .bookend-toggle {
+    flex:1; display:flex; align-items:center; gap:8px;
+    background:var(--card); border:1.5px solid var(--border);
+    border-radius:12px; padding:10px 12px; cursor:pointer;
+    font-size:12px; font-weight:700; color:var(--text2); user-select:none;
+  }
+  .bookend-toggle input { width:16px; height:16px; accent-color:var(--green); cursor:pointer; }
+  .session-card {
+    width:100%; background:var(--card); border:1.5px solid var(--border);
+    border-radius:16px; padding:18px 20px; cursor:pointer;
+    display:flex; align-items:center; gap:16px;
+    box-shadow: var(--shadow); transition:all 0.2s;
+  }
+  .session-card:active { transform:scale(0.98); }
+  .session-card.selected { border-color: var(--green); background: var(--green-light); }
+  .session-icon { font-size:28px; }
+  .session-name { font-size:17px; font-weight:800; color:var(--text); }
+  .session-meta { font-size:12px; color:var(--muted); margin-top:3px; }
+  .btn-start-session {
+    width:100%; padding:20px; border-radius:16px; border:none;
+    background:linear-gradient(135deg, #059669, #047857);
+    color:#fff; font-size:17px; font-weight:800; letter-spacing:2px;
+    font-family:var(--font-ui); cursor:pointer;
+    box-shadow: 0 6px 24px rgba(5,150,105,0.3);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn-start-session:active { transform:scale(0.97); }
+
+  /* TIMER SCREEN */
+  .timer-screen { width:100%; max-width:520px; padding:0 24px; display:flex; flex-direction:column; align-items:center; }
+  .exercise-meta { margin-top:24px; text-align:center; min-height:64px; }
+  .exercise-count { color:var(--muted); font-size:11px; font-weight:700; letter-spacing:3px; margin-bottom:6px; }
+  .exercise-name { font-size:28px; font-weight:800; letter-spacing:0.3px; color:var(--text); }
+  .phase-label-sub { font-size:13px; font-weight:600; margin-top:5px; }
+
+  /* SVG Circle */
+  .circle-wrap { margin-top:16px; position:relative; }
+  .circle-wrap svg { filter: drop-shadow(0 4px 20px rgba(0,0,0,0.12)); }
+
+  /* Controls */
+  .controls { display:flex; gap:12px; margin-top:24px; width:100%; }
+  .btn-main {
+    flex:2; padding:18px; border-radius:16px; border:none;
+    font-family:var(--font-ui); font-size:15px; font-weight:800; letter-spacing:2px;
+    cursor:pointer; transition:all 0.2s;
+  }
+  .btn-main.go {
+    background:linear-gradient(135deg, #059669, #047857);
+    color:#fff; box-shadow:0 6px 24px rgba(5,150,105,0.3);
+  }
+  .btn-main.pause {
+    background:#F3F4F6; border:1.5px solid var(--border); color:var(--text2);
+  }
+  .btn-main.resume {
+    background:linear-gradient(135deg, #059669, #047857);
+    color:#fff; box-shadow:0 6px 24px rgba(5,150,105,0.3);
+  }
+  .btn-stop {
+    flex:1; padding:18px; border-radius:16px;
+    border:1.5px solid #FECACA;
+    background:#FEF2F2; color:#EF4444;
+    font-family:var(--font-ui); font-size:15px; font-weight:800;
+    cursor:pointer; transition:all 0.2s;
+  }
+  .btn-main:active, .btn-stop:active { transform:scale(0.97); }
+
+  /* Progress dots */
+  .progress-bar { display:flex; gap:5px; width:100%; margin-top:20px; }
+  .prog-dot { flex:1; height:6px; border-radius:4px; transition:background 0.3s; }
+
+  /* Next up */
+  .next-up {
+    margin-top:16px; width:100%;
+    background:var(--card); border:1.5px solid var(--border);
+    border-radius:14px; padding:14px 18px;
+    display:flex; justify-content:space-between; align-items:center;
+    box-shadow: var(--shadow);
+  }
+  .next-label { color:var(--muted); font-size:11px; font-weight:700; letter-spacing:2px; }
+  .next-name { color:var(--text2); font-size:15px; font-weight:700; }
+  .next-dur { color:var(--purple); font-size:12px; font-weight:700; background:#EEF2FF; padding:3px 9px; border-radius:6px; }
+
+  /* Done screen */
+  .done-screen { margin-top:28px; text-align:center; padding:0 24px; }
+  .done-emoji { font-size:72px; }
+  .done-title { font-size:28px; font-weight:800; color:var(--pink); letter-spacing:1px; margin-top:12px; }
+  .done-sub { color:var(--muted); font-size:14px; margin-top:8px; }
+
+  /* LIST tab */
+  .list-screen { width:100%; max-width:520px; padding:20px 24px 0; display:flex; flex-direction:column; gap:10px; }
+  .list-hint {
+    color:var(--muted); font-size:11px; font-weight:600; letter-spacing:1px;
+    margin-bottom:4px; line-height:1.7;
+    background:#F9FAFB; border:1px solid var(--border);
+    border-radius:10px; padding:10px 14px;
+  }
+  .list-item {
+    display:flex; align-items:center; gap:14px;
+    background:var(--card); border:1.5px solid var(--border);
+    border-radius:14px; padding:14px 18px;
+    box-shadow: var(--shadow); transition:border-color 0.2s;
+  }
+  .list-item.active { border-color:var(--green); background:var(--green-light); }
+  .list-item.done-item { opacity:0.45; }
+  .list-num {
+    width:34px; height:34px; border-radius:10px;
+    background:#F3F4F6; color:var(--text2);
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:800; flex-shrink:0;
+  }
+  .list-num.done-num { background:var(--green); color:#fff; }
+  .list-num.active-num { background:var(--yellow); color:#fff; }
+  .list-name { flex:1; font-weight:700; font-size:15px; color:var(--text); }
+  .list-meta { color:var(--muted); font-size:11px; margin-top:2px; }
+  .list-dur { background:var(--green-light); border:1px solid #A7F3D0; color:var(--green); border-radius:8px; padding:4px 10px; font-size:13px; font-weight:700; }
+
+  /* Error */
+  .error-banner {
+    margin:12px 24px 0; background:#FEF2F2;
+    border:1px solid #FECACA; color:#DC2626;
+    border-radius:10px; padding:10px 16px; font-size:13px;
+    max-width:472px; width:calc(100% - 48px);
+  }
+  .error-banner.success {
+    background:#ECFDF5; border-color:#A7F3D0; color:#047857;
+  }
+
+  /* STATS tab */
+  .stats-screen { width:100%; max-width:520px; padding:20px 24px 0; display:flex; flex-direction:column; gap:16px; }
+  .stats-grid { display:flex; gap:10px; width:100%; }
+  .stat-card {
+    flex:1; background:var(--card); border:1.5px solid var(--border);
+    border-radius:16px; padding:18px 10px; text-align:center;
+    box-shadow: var(--shadow);
+  }
+  .stat-value { font-size:26px; font-weight:800; color:var(--text); }
+  .stat-label { font-size:10px; font-weight:700; letter-spacing:1.2px; color:var(--muted); margin-top:6px; }
+  .stats-actions { display:flex; flex-direction:column; gap:10px; margin-top:6px; }
+  .btn-csv-action {
+    width:100%; padding:14px; border-radius:14px; border:1.5px solid var(--border);
+    background:var(--card); color:var(--text2); font-family:var(--font-ui);
+    font-size:13px; font-weight:700; letter-spacing:1px; cursor:pointer;
+    box-shadow: var(--shadow); transition:background 0.2s;
+  }
+  .btn-csv-action:active { background:#F3F4F6; }
+  .btn-reset-history {
+    width:100%; padding:12px; border-radius:14px; border:1.5px dashed #FECACA;
+    background:transparent; color:#DC2626; font-family:var(--font-ui);
+    font-size:12px; font-weight:700; letter-spacing:1px; cursor:pointer; margin-top:4px;
+  }
+
+  /* Workload chart */
+  .chart-card {
+    background:var(--card); border:1.5px solid var(--border);
+    border-radius:16px; padding:16px 16px 10px; box-shadow: var(--shadow);
+  }
+  .chart-title { font-size:11px; font-weight:700; letter-spacing:1.5px; color:var(--muted); margin-bottom:10px; }
+
+  .stats-user-toggle { display:flex; gap:8px; width:100%; max-width:472px; }
+  .stats-user-btn {
+    flex:1; padding:10px; border-radius:12px; border:1.5px solid var(--border);
+    background:var(--card); color:var(--text2); font-family:var(--font-ui);
+    font-size:13px; font-weight:700; cursor:pointer; transition:background 0.15s, border-color 0.15s;
+  }
+  .stats-user-btn.active { border-color:var(--green); background:#ECFDF5; color:var(--green); }
+
+  #eval-container { display:flex; flex-direction:column; gap:14px; align-items:center; width:100%; }
+  .chart-empty { font-size:13px; color:var(--muted); text-align:center; padding:20px 10px; }
+  .chart-bar-label { font-size:9px; fill:var(--muted); font-family:var(--font-ui); }
+  .chart-bar-value { font-size:10px; font-weight:700; fill:var(--text2); font-family:var(--font-ui); }
+
+  /* EVALUATION (sweat-emoji workload rating on done screen) */
+  .eval-box {
+    margin-top:28px; width:100%; max-width:320px;
+    background:var(--card); border:1.5px solid var(--border);
+    border-radius:16px; padding:18px 20px; text-align:center;
+    box-shadow: var(--shadow);
+  }
+  .eval-label { font-size:11px; font-weight:700; letter-spacing:2px; color:var(--muted); margin-bottom:10px; }
+  .eval-scale-labels { display:flex; justify-content:space-between; font-size:9px; font-weight:700; letter-spacing:0.5px; color:var(--muted); margin-bottom:6px; padding:0 4px; }
+  .sweat-row { display:flex; justify-content:center; gap:8px; margin-bottom:6px; }
+  .sweat { font-size:28px; opacity:0.22; filter:grayscale(1); cursor:pointer; transition:opacity 0.15s, filter 0.15s, transform 0.1s; user-select:none; }
+  .sweat:active { transform:scale(0.9); }
+  .sweat.filled { opacity:1; filter:grayscale(0); }
+  .btn-save-eval {
+    width:100%; padding:12px; border-radius:12px; border:none;
+    background:linear-gradient(135deg, #059669, #047857);
+    color:#fff; font-family:var(--font-ui); font-size:13px; font-weight:800; letter-spacing:1.5px;
+    cursor:pointer;
+  }
+  .eval-saved { color:var(--green); font-size:13px; font-weight:700; }
+
+  /* Pulse animation */
+  @keyframes pulse-ring {
+    0% { opacity:0.5; transform:translate(-50%,-50%) scale(1); }
+    100% { opacity:0; transform:translate(-50%,-50%) scale(1.18); }
+  }
+  .pulse-ring {
+    position:absolute; top:50%; left:50%;
+    width:260px; height:260px; border-radius:50%;
+    border:3px solid var(--green);
+    animation:pulse-ring 1.2s ease-out infinite;
+    pointer-events:none;
+  }
+  .pulse-ring.yellow { border-color:var(--yellow); }
+  .pulse-ring.red { border-color:var(--red); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="logo">WORKOUT<span>.</span>TIMER</div>
+    <div class="logo-sub" id="header-sub">CHOOSE A SESSION</div>
+  </div>
+  <button class="btn-import" onclick="document.getElementById('csv-file').click()" title="Import exercises/sessions CSV">📂 CSV</button>
+  <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="handleCSV(event)">
+</div>
+
+<div id="error-banner" class="error-banner" style="display:none"></div>
+
+<!-- TABS -->
+<div class="tabs" id="tabs">
+  <button class="tab active" onclick="switchTab('timer')" id="tab-timer">⏱ TIMER</button>
+  <button class="tab" onclick="switchTab('list')" id="tab-list">📋 LIST</button>
+  <button class="tab" onclick="switchTab('stats')" id="tab-stats">📊 STATS</button>
+</div>
+
+<!-- ========== TIMER TAB ========== -->
+<div id="view-timer">
+
+  <!-- SESSION SELECTION -->
+  <div class="session-screen" id="session-screen">
+    <div class="session-title">CHOOSE YOUR SESSION</div>
+
+    <div class="bookend-toggles" id="user-toggles">
+      <label class="bookend-toggle">
+        <input type="checkbox" id="chk-user-j" checked onchange="onUserToggleChange('j')">
+        <span>🧑 J</span>
+      </label>
+      <label class="bookend-toggle">
+        <input type="checkbox" id="chk-user-t" checked onchange="onUserToggleChange('t')">
+        <span>🧑 T</span>
+      </label>
+    </div>
+
+    <div class="bookend-toggles" id="bookend-toggles">
+      <label class="bookend-toggle">
+        <input type="checkbox" id="chk-warmup" checked onchange="onBookendToggleChange()">
+        <span>🔥 Include Warm-up</span>
+      </label>
+      <label class="bookend-toggle">
+        <input type="checkbox" id="chk-cooldown" checked onchange="onBookendToggleChange()">
+        <span>🧊 Include Cool-down</span>
+      </label>
+    </div>
+
+    <div id="session-cards">
+      <!-- Rendered dynamically by renderSessionCards() from allWorkouts, see script below -->
+    </div>
+    <button class="btn-start-session" onclick="beginWorkout()" id="btn-begin" style="width:100%; max-width:472px; margin-top:8px;">▶ START SESSION</button>
+  </div>
+
+  <!-- ACTIVE TIMER -->
+  <div class="timer-screen" id="timer-screen" style="display:none">
+    <div class="exercise-meta">
+      <div class="exercise-count" id="ex-count"></div>
+      <div class="exercise-name" id="ex-name">—</div>
+      <div class="phase-label-sub" id="ex-sub"></div>
+    </div>
+
+    <div class="circle-wrap" id="circle-wrap">
+      <div class="pulse-ring" id="pulse-ring"></div>
+      <svg id="timer-svg" viewBox="0 0 260 260" width="260" height="260">
+        <circle cx="130" cy="130" r="110" fill="none" stroke="#E5E7EB" stroke-width="14"/>
+        <circle id="timer-arc" cx="130" cy="130" r="110"
+          fill="none" stroke="#10B981" stroke-width="14"
+          stroke-linecap="round"
+          stroke-dasharray="691.15 691.15"
+          transform="rotate(-90 130 130)"
+          style="transition:stroke-dasharray 0.45s linear, stroke 0.4s"/>
+        <text id="timer-text" x="130" y="122" text-anchor="middle" fill="#111827"
+          font-size="52" font-family="var(--font-mono)" font-weight="700">0:00</text>
+        <text id="timer-phase" x="130" y="158" text-anchor="middle"
+          font-size="13" font-family="var(--font-ui)" font-weight="600" letter-spacing="3">GO</text>
+      </svg>
+    </div>
+
+    <div class="controls">
+      <button class="btn-main go" id="btn-main" onclick="togglePause()">⏸ PAUSE</button>
+      <button class="btn-stop" onclick="stopWorkout()">✕</button>
+    </div>
+
+    <div class="progress-bar" id="progress-bar"></div>
+
+    <div class="next-up" id="next-up" style="display:none">
+      <span class="next-label">UP NEXT</span>
+      <span class="next-name" id="next-name"></span>
+      <span class="next-dur" id="next-dur"></span>
+    </div>
+  </div>
+
+  <!-- DONE SCREEN -->
+  <div class="done-screen" id="done-screen" style="display:none">
+    <div class="done-emoji">🎉</div>
+    <div class="done-title">WORKOUT KLAAR!</div>
+    <div class="done-sub" id="done-sub"></div>
+
+    <div id="eval-container"></div>
+
+    <button class="btn-start-session" onclick="showSessions()" style="margin-top:20px; width:280px;">↩ BACK TO SESSIONS</button>
+  </div>
+
+</div>
+
+<!-- ========== LIST TAB ========== -->
+<div id="view-list" style="display:none">
+  <div class="list-screen">
+    <div class="list-hint">
+      CSV FORMAT: prep_seconds, name, duration_seconds, session<br>
+      Example: 5,Push-ups,45,Short Cycle
+    </div>
+    <div id="list-items"></div>
+  </div>
+</div>
+
+<!-- ========== STATS TAB ========== -->
+<div id="view-stats" style="display:none">
+  <div class="stats-screen">
+    <div class="stats-user-toggle" id="stats-user-toggle">
+      <button class="stats-user-btn active" data-user="J" onclick="switchStatsUser('J')">🧑 J</button>
+      <button class="stats-user-btn" data-user="T" onclick="switchStatsUser('T')">🧑 T</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label">WORKOUTS DONE</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-time">0m</div>
+        <div class="stat-label">TOTAL TIME</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-streak">0🔥</div>
+        <div class="stat-label">WEEK STREAK</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">WORKLOAD TREND (recent sessions, 🥵 = heavy)</div>
+      <div id="workload-chart"></div>
+    </div>
+
+    <div class="list-hint">
+      Your workout history is saved automatically on this device, tagged
+      per person. Use the buttons below to back it up to a CSV file (both
+      people included), or bring history in from a CSV backed up earlier.
+    </div>
+
+    <div class="stats-actions">
+      <button class="btn-csv-action" onclick="exportHistoryCSV()">⬇ EXPORT HISTORY (.csv)</button>
+      <button class="btn-csv-action" onclick="document.getElementById('history-csv-file').click()">⬆ IMPORT HISTORY (.csv)</button>
+      <input type="file" id="history-csv-file" accept=".csv" style="display:none" onchange="handleHistoryCSV(event)">
+      <button class="btn-reset-history" onclick="resetHistory()">🗑 Clear History (both)</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── INGEBAKKEN DATA ─────────────────────────────────────────────
+// Pas deze lijst aan om je eigen exercises en sessies te beheren.
+// Formaat: { prep: seconden, name: "naam", duration: seconden, session: "sessienaam" }
+// Je kunt ook nog een CSV importeren via de knop rechtsboven om dit te vervangen.
+let allWorkouts = [
+{ prep:5, name:"Jumping Jacks", duration:30, session:"Original 7 Minute"},
+{ prep:5, name:"Wall Sit", duration:30, session:"Original 7 Minute"},
+{ prep:5, name:"Push-up", duration:30, session:"Original 7 Minute"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"Original 7 Minute"},
+{ prep:5, name:"Step-up", duration:30, session:"Original 7 Minute"},
+{ prep:5, name:"Squat", duration:30, session:"Original 7 Minute"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"Original 7 Minute"},
+{ prep:5, name:"Plank", duration:30, session:"Original 7 Minute"},
+{ prep:5, name:"High Knees", duration:30, session:"Original 7 Minute"},
+{ prep:5, name:"Lunge", duration:30, session:"Original 7 Minute"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"Original 7 Minute"},
+{ prep:5, name:"Side Plank", duration:30, session:"Original 7 Minute"},
+{ prep:5, name:"Wall Sit", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Push-up", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Step-up", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Squat", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Plank", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"High Knees", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Lunge", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Side Plank", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Round 2 - Jumping Jacks", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Wall Sit", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Push-up", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Step-up", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Squat", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Plank", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"High Knees", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Lunge", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Side Plank", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Round 3 - Jumping Jacks", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Wall Sit", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Push-up", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Step-up", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Squat", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Plank", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"High Knees", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Lunge", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Side Plank", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Jumping Jacks", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Side Lunge", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"One-Leg Bridge", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"High Knees", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Chair Split Squat", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"One-Leg Tricpes Dip", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Bicylcle Crunch", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"One-Leg Push-up", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Side Plank", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Jumping Jacks", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Side Lunge", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"One-Leg Bridge", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"High Knees", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Chair split Squat", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"One-Leg Tricpes Dip", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Bicylcle Crunch", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"One-Leg Push-up", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Side Plank", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Step-up", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Squat", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Push-up", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Bird Dog", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Jumping Jacks", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Side Lunge", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"One-Leg Bridge", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Power Squat", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Plank", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"High Knees", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Chair Split Squat", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Bicylcle Crunch", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Squat & Box", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Lunge", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"One-Leg Push-up", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Side Plank", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Burpees", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Hinud Push-up", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Jumping Jacks", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Side Lunge", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"One-Leg Bridge", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Wall Sit", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Staggered Push-up", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Superman", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Step-up", duration:30, session:"Beginner Alternate 7 Minute"},
+{ prep:5, name:"Squat", duration:30, session:"Beginner Alternate 7 Minute"},
+{ prep:5, name:"Push-up", duration:30, session:"Beginner Alternate 7 Minute"},
+{ prep:5, name:"Bird Dog", duration:30, session:"Beginner Alternate 7 Minute"},
+{ prep:5, name:"Squat & Box", duration:30, session:"Beginner Alternate 7 Minute"},
+{ prep:5, name:"Lunge", duration:30, session:"Beginner Alternate 7 Minute"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"Beginner Alternate 7 Minute"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"Beginner Alternate 7 Minute"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"Beginner Alternate 7 Minute"},
+{ prep:5, name:"Wall Sit", duration:30, session:"Beginner Alternate 7 Minute"},
+{ prep:5, name:"Staggered Push-up", duration:30, session:"Beginner Alternate 7 Minute"},
+{ prep:5, name:"Superman", duration:30, session:"Beginner Alternate 7 Minute"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"The 8 Minute Workout"},
+{ prep:5, name:"Wall Sit", duration:30, session:"The 8 Minute Workout"},
+{ prep:5, name:"Staggered Push-up", duration:30, session:"The 8 Minute Workout"},
+{ prep:5, name:"Superman", duration:30, session:"The 8 Minute Workout"},
+{ prep:5, name:"High Knees", duration:30, session:"The 8 Minute Workout"},
+{ prep:5, name:"Chair split Squat", duration:30, session:"The 8 Minute Workout"},
+{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The 8 Minute Workout"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"The 8 Minute Workout"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The 8 Minute Workout"},
+{ prep:5, name:"Power Squat", duration:30, session:"The 8 Minute Workout"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"The 8 Minute Workout"},
+{ prep:5, name:"Plank", duration:30, session:"The 8 Minute Workout"},
+{ prep:5, name:"Step-up", duration:30, session:"Beginner 9 Minute Workout"},
+{ prep:5, name:"Squat", duration:30, session:"Beginner 9 Minute Workout"},
+{ prep:5, name:"Push-up", duration:30, session:"Beginner 9 Minute Workout"},
+{ prep:5, name:"Bird Dog", duration:30, session:"Beginner 9 Minute Workout"},
+{ prep:5, name:"Squat & Box", duration:30, session:"Beginner 9 Minute Workout"},
+{ prep:5, name:"Lunge", duration:30, session:"Beginner 9 Minute Workout"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"Beginner 9 Minute Workout"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"Beginner 9 Minute Workout"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"Beginner 9 Minute Workout"},
+{ prep:5, name:"Wall Sit", duration:30, session:"Beginner 9 Minute Workout"},
+{ prep:5, name:"Staggered Push-up", duration:30, session:"Beginner 9 Minute Workout"},
+{ prep:5, name:"Superman", duration:30, session:"Beginner 9 Minute Workout"},
+{ prep:5, name:"March in Place", duration:30, session:"First Timer"},
+{ prep:5, name:"Chair-Assist Squat", duration:30, session:"First Timer"},
+{ prep:5, name:"Kneeling Push-up", duration:30, session:"First Timer"},
+{ prep:5, name:"Kneeling Plank", duration:30, session:"First Timer"},
+{ prep:5, name:"Jump Rope Skip", duration:30, session:"First Timer"},
+{ prep:5, name:"Chair-Assist Split Squat", duration:30, session:"First Timer"},
+{ prep:5, name:"Kneeling Staggered Push-Up", duration:30, session:"First Timer"},
+{ prep:5, name:"Kneeling Side Plank", duration:30, session:"First Timer"},
+{ prep:5, name:"Stand & Box", duration:30, session:"First Timer"},
+{ prep:5, name:"Reverse Lunge", duration:30, session:"First Timer"},
+{ prep:5, name:"Chair-Assist Push-Up", duration:30, session:"First Timer"},
+{ prep:5, name:"Swimmer", duration:30, session:"First Timer"},
+{ prep:5, name:"Jumping Jacks", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Wall Sit", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Push-up", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Step-up", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Squat", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Plank", duration:30, session:"The Full Workout"},
+{ prep:5, name:"High Knees", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Lunge", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Side Plank", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Jumping Jacks", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Wall Sit", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Push-up", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Step-up", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Squat", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Plank", duration:30, session:"The Full Workout"},
+{ prep:5, name:"High Knees", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Lunge", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Side Plank", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Jumping Jacks", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Wall Sit", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Push-up", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Step-up", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Squat", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Plank", duration:30, session:"The Full Workout"},
+{ prep:5, name:"High Knees", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Lunge", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Side Plank", duration:30, session:"The Full Workout"},
+{ prep:5, name:"High Knees", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Squat", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Push-up", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side Lunge", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side Plank", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Lunge", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Superman", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"High Knees", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Squat", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Push-up", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side Lunge", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side Plank", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Lunge", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Superman", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"High Knees", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Squat", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Push-up", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side Lunge", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side Plank", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Lunge", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Superman", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"Advanced Beginner"},
+{ prep:5, name:"Power Squat", duration:30, session:"Advanced Beginner"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"Advanced Beginner"},
+{ prep:5, name:"Plank", duration:30, session:"Advanced Beginner"},
+{ prep:5, name:"Burpees", duration:30, session:"Advanced Beginner"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Advanced Beginner"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"Advanced Beginner"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"Advanced Beginner"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"Advanced Beginner"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"Advanced Beginner"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"Advanced Beginner"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"Advanced Beginner"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"Core Workout"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"Core Workout"},
+{ prep:5, name:"Bird Dog", duration:30, session:"Core Workout"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"Core Workout"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Bridge", duration:30, session:"Core Workout"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"Core Workout"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"Core Workout"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"Core Workout"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"Core Workout"},
+{ prep:5, name:"Bird Dog", duration:30, session:"Core Workout"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"Core Workout"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Bridge", duration:30, session:"Core Workout"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"Core Workout"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"Core Workout"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"Core Workout"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"Core Workout"},
+{ prep:5, name:"Bird Dog", duration:30, session:"Core Workout"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"Core Workout"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Bridge", duration:30, session:"Core Workout"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"Core Workout"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"Core Workout"},
+{ prep:5, name:"Step-up", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Squat", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Push-up", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Bird Dog", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Jumping Jacks", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Side Lunge", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"One-Leg Bridge", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Power Squat", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Plank", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Squat & Box", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Lunge", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"High Knees", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Chair split Squat", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Burpees", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Wall Sit", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Staggered Push-up", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Superman", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Side Plank", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Step-up", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Wall Sit", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Jumping Jacks", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Chair split Squat", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Step-up", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Wall Sit", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Jumping Jacks", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Chair split Squat", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Step-up", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Wall Sit", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Jumping Jacks", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Chair split Squat", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"1-2 Box & kick", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Reverse Lunge & Knee Lift", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Power Push-Up", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Reverse Crunch & Hug", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Skater", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"One-Leg Squat Hops", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Downward Dog Grasshopper", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Scissor Kicks", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Lunge, Touch & Kick", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"One-Leg Deadlift", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Diamond Push-Up", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"V Sit Twist", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"1-2 Box & kick", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Reverse Lunge & Knee Lift", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Power Push-Up", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Reverse Crunch & Hug", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Skater", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"One-Leg Squat Hops", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Downward Dog Grasshopper", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Scissor Kicks", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Lunge, Touch & Kick", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"One-Leg Deadlift", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Diamond Push-Up", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"V Sit Twist", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"1-2 Box & kick", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Reverse Lunge & Knee Lift", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Power Push-Up", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Reverse Crunch & Hug", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Skater", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"One-Leg Squat Hops", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Downward Dog Grasshopper", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Scissor Kicks", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Lunge, Touch & Kick", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"One-Leg Deadlift", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Diamond Push-Up", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"V Sit Twist", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Power Squat", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Plank", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Burpees", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Power Squat", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Plank", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Burpees", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Power Squat", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Plank", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Burpees", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Squat Thrusts", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Power Squat", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Chair Decline Push-Up", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Advanced Bird Dog", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Drop & Touch", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Long Jumps", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Bird Dog Push-Up", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Side Plank Crunch", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Lateral Drop & Touch", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Wall Sit", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Chair Pike Push-Up", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Windscreen Wipers", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Squat Thrusts", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Power Squat", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Chair Decline Push-Up", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Advanced Bird Dog", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Drop & Touch", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Long Jumps", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Bird Dog Push-Up", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Side Plank Crunch", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Lateral Drop & Touch", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Wall Sit", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Chair Pike Push-Up", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Windscreen Wipers", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Squat Thrusts", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Power Squat", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Chair Decline Push-Up", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Advanced Bird Dog", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Drop & Touch", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Long Jumps", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Bird Dog Push-Up", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Side Plank Crunch", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Lateral Drop & Touch", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Wall Sit", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Chair Pike Push-Up", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Windscreen Wipers", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Burpees", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Chair split Squat", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Superman", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Side Lunge", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Power Squat", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Staggered Push-up", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Burpees", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Chair split Squat", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Superman", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Side Lunge", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Power Squat", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Staggered Push-up", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Burpees", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Chair split Squat", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Superman", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Side Lunge", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Power Squat", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Staggered Push-up", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Squat & Box", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Lunge", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Wall Sit", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Staggered Push-up", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Superman", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"High Knees", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Chair split Squat", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Side Plank", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Burpees", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Squat & Box", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Lunge", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Wall Sit", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Staggered Push-up", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Superman", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"High Knees", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Chair split Squat", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Side Plank", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Burpees", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Power Squat", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"One-Leg Bridge", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Squat & Box", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Chair split Squat", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Superman", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Power Squat", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"One-Leg Bridge", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Squat & Box", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Chair split Squat", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Superman", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Power Squat", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"One-Leg Bridge", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Squat & Box", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Chair split Squat", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Superman", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"High Knees", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Side Lunge", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Plank", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Burpees", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Side Plank", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"High Knees", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Side Lunge", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Plank", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Burpees", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Side Plank", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"High Knees", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Side Lunge", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Plank", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Burpees", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Side Plank", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Bird Dog", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Burpees", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Side Lunge", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Staggered Push-up", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Bird Dog", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Burpees", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Side Lunge", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Staggered Push-up", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Bird Dog", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Burpees", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Side Lunge", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Staggered Push-up", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Step-up", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Squat", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Push-up", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Bird Dog", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Squat & Box", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Lunge", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Triceps Dip", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Abdominal Crunch", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Wall Sit", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Staggered Push-up", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Superman", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Jumping Jacks", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Side Lunge", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Push-up & Rotation", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"One-Leg Bridge", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"High Knees", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Chair split Squat", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Side-to-side hop", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Lunge & Rotation", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"One-Leg push-up", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Side Plank", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Power Squat", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Plank", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Burpees", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"One-Leg Squat", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Full Side Plank", duration:30, session:"The Variety Mix"},
+];
+
+const SESSION_ICONS = ["🔥","💪","⚡","🏃","🧘","🥊","🚀","🎯"];
+
+// ─── WARM-UP / COOL-DOWN ───────────────────────────────────────────
+// These bookend every session automatically — not tied to a specific
+// session, so they aren't part of allWorkouts / CSV import-export.
+const WARMUP_TRANSITION_SECS = 5; // interval after warm-up, before the workout starts
+const WARMUP = [
+  { name:"Shoulder Roll Forward",  duration:15, prep:3, type:"warmup" },
+  { name:"Shoulder Roll Backward", duration:15, prep:3, type:"warmup" },
+  { name:"Knee Hugs",              duration:30, prep:3, type:"warmup" },
+  { name:"Torso Rotation",         duration:30, prep:3, type:"warmup" },
+  { name:"Arm Hugs",               duration:30, prep:3, type:"warmup" },
+];
+const COOLDOWN = [
+  { name:"Single-leg Stretch Left",  duration:20, prep:3, type:"cooldown" },
+  { name:"Single-leg Stretch Right", duration:20, prep:3, type:"cooldown" },
+  { name:"Quadriceps Stretch Left",  duration:20, prep:3, type:"cooldown" },
+  { name:"Quadriceps Stretch Right", duration:20, prep:3, type:"cooldown" },
+  { name:"Arm Stretch Above",        duration:20, prep:3, type:"cooldown" },
+  { name:"Arm Stretch Backward",     duration:20, prep:3, type:"cooldown" },
+  { name:"Arm Stretch Forward",      duration:20, prep:3, type:"cooldown" },
+  { name:"Triceps Stretch Left",     duration:20, prep:3, type:"cooldown" },
+  { name:"Triceps Stretch Right",    duration:20, prep:3, type:"cooldown" },
+];
+
+// Universal 10-second lead-in before the very first exercise of a
+// session (warm-up or main, whichever comes first) — announces the
+// session name, then counts "Three, Two, One, Go!" instead of that
+// first exercise's own prep announcement.
+const SESSION_INTRO_SECS = 10;
+
+// Builds the full step list for a session given whether warm-up/cool-down
+// are included. Used both for the real run (beginWorkout) and for preview
+// totals on the session cards — for the real run the main exercises are
+// kept by reference (so List-tab progress tracking still works); for
+// preview it doesn't matter since nothing needs object identity there.
+function composeSession(name, incWarm, incCool) {
+  const main = sessions[name] || [];
+  const warm = incWarm ? WARMUP.map(w => ({ ...w, session: name })) : [];
+  const cool = incCool ? COOLDOWN.map(w => ({ ...w, session: name })) : [];
+  return {
+    list: [...warm, ...main, ...cool],
+    mainStart: warm.length,
+    mainEnd: warm.length + main.length
+  };
+}
+
+// Prep seconds to use for step `idx` in a composed list, given where the
+// main section starts. The warm-up → main-workout boundary gets the
+// fixed WARMUP_TRANSITION_SECS; everything else, including exercise 0,
+// uses its own defined prep value.
+function previewPrepSeconds(idx, w, mainStart) {
+  if (idx === mainStart) return WARMUP_TRANSITION_SECS;
+  return w.prep || 0;
+}
+
+// Full preview total (in seconds) for a session, including the session
+// intro and whichever of warm-up/cool-down are currently toggled on.
+function sessionPreviewTotal(name, incWarm, incCool) {
+  const { list, mainStart } = composeSession(name, incWarm, incCool);
+  let total = SESSION_INTRO_SECS;
+  list.forEach((w, i) => { total += previewPrepSeconds(i, w, mainStart) + w.duration; });
+  return { list, total };
+}
+
+// ─── STATE ───────────────────────────────────────────────────────
+let sessions = {};
+let selectedSession = null;
+let currentWorkouts = [];
+let mainStartIdx = 0;   // index in currentWorkouts where the real session exercises start (after warm-up)
+let mainEndIdx = 0;     // index where the real session exercises end (cool-down starts)
+let includeWarmup = localStorage.getItem("includeWarmup") !== "false";   // default true
+let includeCooldown = localStorage.getItem("includeCooldown") !== "false"; // default true
+let userJChecked = localStorage.getItem("userJChecked") !== "false"; // default true
+let userTChecked = localStorage.getItem("userTChecked") !== "false"; // default true
+let sessionUsers = [];           // who this specific run was logged for, e.g. ["J","T"]
+let currentRatings = {};         // { J: 4, T: 2 } — picked but not yet saved
+let lastEntryIndexByUser = {};   // { J: idx-in-workoutHistory, T: idx-in-workoutHistory }
+let statsUser = "J";             // which user's stats are shown in the Stats tab
+let currentIdx = 0;
+let phase = "idle"; // idle | intro | prep | work | done
+let seconds = 0;
+let totalSeconds = 0;
+let running = false;
+let timerInterval = null;
+let currentTab = "timer";
+
+// ─── WORKOUT HISTORY / STATS ──────────────────────────────────────
+// Persisted in localStorage on this device. Each entry:
+// { date: ISOString, session: name, duration: seconds, rating: 1-5|null, user: "J"|"T" }
+let workoutHistory = loadHistory();
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem("workoutHistory");
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveHistoryToStorage() {
+  try {
+    localStorage.setItem("workoutHistory", JSON.stringify(workoutHistory));
+  } catch (e) {
+    showMessage("Couldn't save history: " + e.message, true);
+  }
+}
+
+// ─── AUDIO ───────────────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  return audioCtx;
+}
+
+function playBeep(freq, duration, vol = 0.4) {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
+  } catch(e) {}
+}
+
+function playCountdownBeep(n) {
+  // 3 short beeps for 3,2,1 — higher pitch on last
+  if (n === 1) playBeep(880, 0.25, 0.5);
+  else playBeep(660, 0.2, 0.35);
+}
+
+function playStartBeep() {
+  // Double high beep = GO!
+  playBeep(1046, 0.15, 0.5);
+  setTimeout(() => playBeep(1318, 0.3, 0.6), 160);
+}
+
+// ─── SPEECH ──────────────────────────────────────────────────────
+// ─── SPEECH ──────────────────────────────────────────────────────
+// Tries to pick a female English voice; falls back to default
+function getVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  // Prefer high-quality female English voices (Samantha, Karen, Moira on iOS)
+  const preferred = ["Samantha", "Karen", "Moira", "Tessa", "Fiona"];
+  for (const name of preferred) {
+    const v = voices.find(v => v.name.includes(name));
+    if (v) return v;
+  }
+  // Fallback: any female en-US/en-GB voice
+  return voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("female"))
+      || voices.find(v => v.lang.startsWith("en"))
+      || null;
+}
+
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US";
+  u.rate = 1.0;     // natural pace
+  u.pitch = 1.25;   // bright, upbeat tone
+  u.volume = 1.0;
+  const voice = getVoice();
+  if (voice) u.voice = voice;
+  window.speechSynthesis.speak(u);
+}
+
+// Varied phrases for announcing next exercise
+const PREP_PHRASES = [
+  (name) => `Get ready for ${name}!`,
+  (name) => `Up next — ${name}! Let's go!`,
+  (name) => `Time for ${name}! You've got this!`,
+  (name) => `Next up, ${name}! Stay strong!`,
+  (name) => `${name} coming up! Push it!`,
+  (name) => `Alright! Get set for ${name}!`,
+  (name) => `${name}! Let's crush it!`,
+];
+
+// Mid-workout random motivations (called twice per session at ~33% and ~66%)
+const MID_PHRASES = [
+  "Keep going, you're doing amazing!",
+  "Stay focused, you're killing it!",
+  "Almost halfway there — don't stop now!",
+  "You're on fire! Keep pushing!",
+  "Great work! Stay in the zone!",
+  "Halfway there — stronger every second!",
+  "Push through it — nearly there!",
+  "You're doing brilliantly, keep it up!",
+];
+
+let midMotivationsFired = [false, false];
+
+function pickPhrase(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function resetMidMotivations() {
+  midMotivationsFired = [false, false];
+}
+
+// Called each tick to check if we should fire a mid-workout motivation.
+// Scoped to the core session only (mainStartIdx..mainEndIdx), so warm-up
+// and cool-down length don't skew when these land. Also gated to the
+// halfway point of the current exercise's work phase, so the line plays
+// while you're actually mid-movement instead of right as it starts.
+function checkMidMotivation() {
+  const mainTotal = mainEndIdx - mainStartIdx;
+  if (mainTotal <= 0) return;
+  const doneInMain = currentIdx - mainStartIdx;
+  const pct = doneInMain / mainTotal;
+  const halfway = Math.max(1, Math.floor(totalSeconds / 2));
+  const midpointOfExercise = phase === "work" && seconds <= halfway;
+  // Fire at ~33% through the core session
+  if (!midMotivationsFired[0] && pct >= 0.30 && pct < 0.45 && midpointOfExercise) {
+    midMotivationsFired[0] = true;
+    speak(pickPhrase(MID_PHRASES));
+  }
+  // Fire at ~66% through the core session
+  if (!midMotivationsFired[1] && pct >= 0.62 && pct < 0.75 && midpointOfExercise) {
+    midMotivationsFired[1] = true;
+    speak(pickPhrase(MID_PHRASES));
+  }
+}
+
+// ─── SESSIONS ────────────────────────────────────────────────────
+function buildSessions() {
+  sessions = {};
+  allWorkouts.forEach(w => {
+    const s = w.session || "Algemeen";
+    if (!sessions[s]) sessions[s] = [];
+    sessions[s].push(w);
+  });
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return m + ":" + String(sec).padStart(2, "0");
+}
+
+function totalDur(list) {
+  return list.reduce((a, w) => a + (w.prep || 0) + w.duration, 0);
+}
+
+function selectSession(name, el) {
+  selectedSession = name;
+  document.querySelectorAll(".session-card").forEach(c => c.classList.remove("selected"));
+  el.classList.add("selected");
+}
+
+function onBookendToggleChange() {
+  includeWarmup = document.getElementById("chk-warmup").checked;
+  includeCooldown = document.getElementById("chk-cooldown").checked;
+  localStorage.setItem("includeWarmup", String(includeWarmup));
+  localStorage.setItem("includeCooldown", String(includeCooldown));
+  renderSessionCards(); // refresh the durations shown on the cards
+}
+
+function onUserToggleChange(who) {
+  const jChk = document.getElementById("chk-user-j");
+  const tChk = document.getElementById("chk-user-t");
+  // Require at least one person selected — revert if this uncheck left none
+  if (!jChk.checked && !tChk.checked) {
+    if (who === "j") jChk.checked = true; else tChk.checked = true;
+    showMessage("At least one person needs to be selected.", false);
+  }
+  userJChecked = jChk.checked;
+  userTChecked = tChk.checked;
+  localStorage.setItem("userJChecked", String(userJChecked));
+  localStorage.setItem("userTChecked", String(userTChecked));
+}
+
+function renderSessionCards() {
+  buildSessions();
+  const keys = Object.keys(sessions);
+  const container = document.getElementById("session-cards");
+  container.innerHTML = "";
+  container.style.cssText = "width:100%;max-width:472px;display:flex;flex-direction:column;gap:12px;";
+
+  keys.forEach((name, i) => {
+    const main = sessions[name];
+    const { total: dur } = sessionPreviewTotal(name, includeWarmup, includeCooldown);
+    const icon = SESSION_ICONS[i % SESSION_ICONS.length];
+    const bookendNote = includeWarmup && includeCooldown ? "incl. warm-up & cool-down"
+      : includeWarmup ? "incl. warm-up"
+      : includeCooldown ? "incl. cool-down"
+      : "no warm-up/cool-down";
+    const card = document.createElement("div");
+    card.className = "session-card" + (selectedSession === name ? " selected" : "");
+    card.innerHTML = `
+      <div class="session-icon">${icon}</div>
+      <div>
+        <div class="session-name">${name}</div>
+        <div class="session-meta">${main.length} exercises · ${formatTime(dur)} (${bookendNote})</div>
+      </div>
+    `;
+    card.onclick = () => selectSession(name, card);
+    container.appendChild(card);
+  });
+
+  // Auto-select first
+  if (!selectedSession || !sessions[selectedSession]) {
+    selectedSession = keys[0];
+    container.querySelector(".session-card")?.classList.add("selected");
+  }
+}
+
+function showSessions() {
+  phase = "idle";
+  running = false;
+  clearInterval(timerInterval);
+  document.getElementById("session-screen").style.display = "flex";
+  document.getElementById("timer-screen").style.display = "none";
+  document.getElementById("done-screen").style.display = "none";
+  document.getElementById("header-sub").textContent = "CHOOSE A SESSION";
+  // Always rebuild from allWorkouts — this is what makes the session
+  // list flexible: add/edit/remove entries in allWorkouts (or import a
+  // CSV) and the cards below update automatically, no HTML editing needed.
+  renderSessionCards();
+}
+
+// ─── START WORKOUT ───────────────────────────────────────────────
+function beginWorkout() {
+  if (!selectedSession || !sessions[selectedSession]) return;
+  // Unlock audio on iOS with a silent beep on user gesture
+  try { getAudioCtx().resume(); } catch(e) {}
+
+  sessionUsers = [];
+  if (userJChecked) sessionUsers.push("J");
+  if (userTChecked) sessionUsers.push("T");
+
+  const composed = composeSession(selectedSession, includeWarmup, includeCooldown);
+  currentWorkouts = composed.list; // main exercises kept by reference so the List tab can track progress
+  mainStartIdx = composed.mainStart;
+  mainEndIdx = composed.mainEnd;
+
+  document.getElementById("session-screen").style.display = "none";
+  document.getElementById("timer-screen").style.display = "flex";
+  document.getElementById("done-screen").style.display = "none";
+  renderProgressBar();
+  resetMidMotivations();
+  startSessionIntro();
+}
+
+// The interval before the exercise at `idx` starts. Overridden to
+// WARMUP_TRANSITION_SECS right at the warm-up → real-workout boundary,
+// otherwise uses that exercise's own prep value. Exercise 0 now gets a
+// normal prep step too — the session intro no longer replaces it.
+function prepSecondsFor(idx, w) {
+  return idx === mainStartIdx ? WARMUP_TRANSITION_SECS : (w.prep || 0);
+}
+
+// True if the exercise at this index is part of the warm-up or cool-down
+// (as opposed to the core/main session) — used to keep those sections
+// plain and uninterrupted, with motivational phrasing reserved for the
+// core workout only.
+function isBookend(idx) {
+  const t = currentWorkouts[idx]?.type;
+  return t === "warmup" || t === "cooldown";
+}
+
+// ─── SESSION INTRO (10s "Get ready for X" → Three, Two, One, Go!) ──
+function startSessionIntro() {
+  phase = "intro";
+  currentIdx = -1;
+  seconds = SESSION_INTRO_SECS;
+  totalSeconds = SESSION_INTRO_SECS;
+  running = true;
+
+  updateCircle();
+  document.getElementById("ex-count").textContent = "GET READY";
+  document.getElementById("ex-name").textContent = selectedSession;
+  const sub = document.getElementById("ex-sub");
+  sub.textContent = "Starting soon…";
+  sub.style.color = "#F59E0B";
+  document.getElementById("header-sub").textContent = "GET READY · " + selectedSession.toUpperCase();
+  updateNextUp();   // shows the first exercise as "next up"
+  updateProgressBar();
+
+  speak(`Get ready for ${selectedSession}`);
+
+  clearInterval(timerInterval);
+  timerInterval = setInterval(tick, 1000);
+}
+
+function startPhase(idx, ph) {
+  currentIdx = idx;
+  phase = ph;
+  const w = currentWorkouts[idx];
+  const secs = ph === "prep" ? prepSecondsFor(idx, w) : w.duration;
+  seconds = secs;
+  totalSeconds = secs;
+  running = true;
+
+  updateCircle();
+  updateExerciseInfo();
+  updateNextUp();
+  updateProgressBar();
+
+  // Speak exercise name during prep. Warm-up/cool-down get a plain,
+  // consistent "Next up" announcement; motivational variation is
+  // reserved for the core session.
+  if (ph === "prep") {
+    if (isBookend(idx)) {
+      speak(`Next up, ${w.name}`);
+    } else {
+      speak(pickPhrase(PREP_PHRASES)(w.name));
+    }
+  }
+
+  clearInterval(timerInterval);
+  timerInterval = setInterval(tick, 1000);
+}
+
+function tick() {
+  if (!running) return;
+  seconds--;
+
+  // Session intro: always speaks the countdown (it's the one universal
+  // "Three, Two, One, Go!" moment before the very first exercise).
+  if (phase === "intro") {
+    if (seconds <= 3 && seconds > 0) {
+      playCountdownBeep(seconds);
+      if (seconds === 3) speak("Three");
+      else if (seconds === 2) speak("Two");
+      else if (seconds === 1) speak("One");
+    }
+    updateCircle();
+    if (seconds <= 0) {
+      clearInterval(timerInterval);
+      advance();
+    }
+    return;
+  }
+
+  const bookend = isBookend(currentIdx);
+
+  // Mid-workout motivations only apply to the core session
+  if (!bookend) checkMidMotivation();
+
+  // Countdown beeps at 3, 2, 1. Spoken numbers are reserved for the
+  // core session — during warm-up/cool-down the numbers talk over the
+  // "Next up" announcement, so we stay silent here and just say "Go"
+  // once work starts instead (see advance()).
+  if (seconds <= 3 && seconds > 0) {
+    playCountdownBeep(seconds);
+    if (!bookend) {
+      if (seconds === 3) speak("Three");
+      else if (seconds === 2) speak("Two");
+      else if (seconds === 1) speak("One");
+    }
+  }
+
+  updateCircle();
+
+  if (seconds <= 0) {
+    clearInterval(timerInterval);
+    advance();
+  }
+}
+
+function advance() {
+  if (phase === "intro") {
+    // Intro countdown is done — now start exercise #0's own normal
+    // prep step (countdown + name announcement), same as every other
+    // exercise gets between reps.
+    startPhase(0, prepSecondsFor(0, currentWorkouts[0]) > 0 ? "prep" : "work");
+  } else if (phase === "prep") {
+    playStartBeep();
+    speak("Go!");
+    startPhase(currentIdx, "work");
+  } else {
+    const next = currentIdx + 1;
+    if (next < currentWorkouts.length) {
+      startPhase(next, prepSecondsFor(next, currentWorkouts[next]) > 0 ? "prep" : "work");
+    } else {
+      finishWorkout();
+    }
+  }
+}
+
+function finishWorkout() {
+  phase = "done";
+  running = false;
+  clearInterval(timerInterval);
+  speak("Workout complete! You absolutely crushed it! Amazing work!");
+  playBeep(523, 0.1); setTimeout(() => playBeep(659, 0.1), 120); setTimeout(() => playBeep(784, 0.3), 240);
+  document.getElementById("timer-screen").style.display = "none";
+  document.getElementById("done-screen").style.display = "block";
+  const total = SESSION_INTRO_SECS + currentWorkouts.reduce((a, w, i) => a + prepSecondsFor(i, w) + w.duration, 0);
+  const users = sessionUsers.length ? sessionUsers : ["J"]; // safety fallback, shouldn't normally happen
+  document.getElementById("done-sub").textContent =
+    `${currentWorkouts.length} exercises · ${formatTime(total)} totaal · ${users.join(" & ")}`;
+
+  // Log this completed workout to history — one entry per selected person
+  // (counts immediately; the rating below is optional and attaches to
+  // that person's own entry).
+  lastEntryIndexByUser = {};
+  users.forEach(u => {
+    workoutHistory.push({
+      date: new Date().toISOString(),
+      session: selectedSession,
+      duration: total,
+      rating: null,
+      user: u
+    });
+    lastEntryIndexByUser[u] = workoutHistory.length - 1;
+  });
+  saveHistoryToStorage();
+  renderEvalUI(users);
+  updateStatsDisplay();
+}
+
+// Builds one evaluation card per person who took part in this session.
+// With one person it's unlabeled; with both, each card is tagged so
+// it's clear whose rating is whose.
+function renderEvalUI(users) {
+  currentRatings = {};
+  const container = document.getElementById("eval-container");
+  container.innerHTML = users.map(u => `
+    <div class="eval-box">
+      <div class="eval-label">${users.length > 1 ? `🧑 ${u} — ` : ""}HOW HEAVY DID THAT FEEL?</div>
+      <div class="eval-scale-labels"><span>LIGHT</span><span>HEAVY</span></div>
+      <div class="sweat-row">
+        ${[1,2,3,4,5].map(v => `<span class="sweat" data-user="${u}" data-v="${v}">🥵</span>`).join("")}
+      </div>
+      <button class="btn-save-eval" data-user="${u}">SAVE RATING</button>
+      <div class="eval-saved" id="eval-saved-${u}" style="display:none">✓ Saved — nice work!</div>
+    </div>
+  `).join("");
+}
+
+// Delegated listener (attached once) — handles clicks for however many
+// eval cards are currently rendered (one or two, depending on who trained).
+document.getElementById("eval-container").addEventListener("click", e => {
+  const sweat = e.target.closest(".sweat");
+  if (sweat) {
+    const user = sweat.dataset.user;
+    const rating = parseInt(sweat.dataset.v);
+    currentRatings[user] = rating;
+    document.querySelectorAll(`.sweat[data-user="${user}"]`).forEach(s => {
+      s.classList.toggle("filled", parseInt(s.dataset.v) <= rating);
+    });
+    return;
+  }
+  const saveBtn = e.target.closest(".btn-save-eval");
+  if (saveBtn) saveEvaluationForUser(saveBtn.dataset.user);
+});
+
+function saveEvaluationForUser(user) {
+  const rating = currentRatings[user];
+  const idx = lastEntryIndexByUser[user];
+  if (!rating || idx === undefined || !workoutHistory[idx]) return;
+  workoutHistory[idx].rating = rating;
+  saveHistoryToStorage();
+  updateStatsDisplay();
+  const savedEl = document.getElementById(`eval-saved-${user}`);
+  if (savedEl) savedEl.style.display = "block";
+  const btn = document.querySelector(`.btn-save-eval[data-user="${user}"]`);
+  if (btn) btn.style.display = "none";
+}
+
+function togglePause() {
+  running = !running;
+  const btn = document.getElementById("btn-main");
+  if (running) {
+    btn.textContent = "⏸ PAUSE";
+    btn.className = "btn-main pause";
+    timerInterval = setInterval(tick, 1000);
+  } else {
+    btn.textContent = "▶ RESUME";
+    btn.className = "btn-main resume";
+    clearInterval(timerInterval);
+  }
+}
+
+function stopWorkout() {
+  clearInterval(timerInterval);
+  window.speechSynthesis?.cancel();
+  showSessions();
+}
+
+// ─── UI UPDATES ──────────────────────────────────────────────────
+const CIRC = 2 * Math.PI * 110;
+
+function updateCircle() {
+  const arc = document.getElementById("timer-arc");
+  const txt = document.getElementById("timer-text");
+  const phLabel = document.getElementById("timer-phase");
+  const svg = document.getElementById("timer-svg");
+  const ring = document.getElementById("pulse-ring");
+
+  const progress = totalSeconds > 0 ? seconds / totalSeconds : 1;
+  arc.setAttribute("stroke-dasharray", `${CIRC * progress} ${CIRC}`);
+  txt.textContent = formatTime(seconds);
+
+  let color, glow, label;
+  if (phase === "prep" || phase === "intro") {
+    color = "#F59E0B"; glow = "rgba(245,158,11,0.4)"; label = "GET READY";
+    ring.className = "pulse-ring yellow";
+  } else if (seconds <= 3 && seconds > 0) {
+    color = "#EF4444"; glow = "rgba(239,68,68,0.45)"; label = "GO";
+    ring.className = "pulse-ring red";
+  } else {
+    color = "#10B981"; glow = "rgba(16,185,129,0.4)"; label = "GO";
+    ring.className = "pulse-ring";
+  }
+
+  arc.setAttribute("stroke", color);
+  phLabel.setAttribute("fill", color);
+  phLabel.textContent = label;
+  svg.style.filter = `drop-shadow(0 0 24px ${glow})`;
+}
+
+function updateExerciseInfo() {
+  const w = currentWorkouts[currentIdx];
+  let blockLabel, posText;
+  if (w.type === "warmup") {
+    blockLabel = "WARM-UP";
+    posText = `${currentIdx + 1} / ${WARMUP.length}`;
+  } else if (w.type === "cooldown") {
+    blockLabel = "COOL-DOWN";
+    posText = `${currentIdx - mainEndIdx + 1} / ${COOLDOWN.length}`;
+  } else {
+    blockLabel = selectedSession;
+    const mainCount = mainEndIdx - mainStartIdx;
+    posText = `${currentIdx - mainStartIdx + 1} / ${mainCount}`;
+  }
+  document.getElementById("ex-count").textContent = `${posText} — ${blockLabel}`;
+  document.getElementById("ex-name").textContent = w.name;
+  const sub = document.getElementById("ex-sub");
+  if (phase === "prep") {
+    sub.textContent = "Get ready…";
+    sub.style.color = "#F59E0B";
+  } else {
+    sub.textContent = `${w.duration}s exercise`;
+    sub.style.color = "var(--muted)";
+  }
+  document.getElementById("header-sub").textContent = blockLabel.toUpperCase() + " · LET'S GO";
+}
+
+function updateNextUp() {
+  const nextEl = document.getElementById("next-up");
+  const next = currentWorkouts[currentIdx + 1];
+  if (next) {
+    nextEl.style.display = "flex";
+    document.getElementById("next-name").textContent = next.name;
+    document.getElementById("next-dur").textContent = next.duration + "s";
+  } else {
+    nextEl.style.display = "none";
+  }
+}
+
+function renderProgressBar() {
+  const bar = document.getElementById("progress-bar");
+  bar.innerHTML = currentWorkouts.map((_, i) =>
+    `<div class="prog-dot" id="pdot-${i}" style="background:#E5E7EB"></div>`
+  ).join("");
+}
+
+function updateProgressBar() {
+  currentWorkouts.forEach((_, i) => {
+    const dot = document.getElementById("pdot-" + i);
+    if (!dot) return;
+    if (i < currentIdx) dot.style.background = "#10B981";
+    else if (i === currentIdx) dot.style.background = phase === "prep" ? "#F59E0B" : "#10B981";
+    else dot.style.background = "#E5E7EB";
+  });
+}
+
+// ─── LIST VIEW ───────────────────────────────────────────────────
+function renderStaticBlock(container, items, headerText) {
+  const hdr = document.createElement("div");
+  hdr.style.cssText = "color:var(--muted);font-size:11px;font-weight:700;letter-spacing:3px;margin-top:8px;";
+  hdr.textContent = headerText;
+  container.appendChild(hdr);
+  items.forEach((w, i) => {
+    const item = document.createElement("div");
+    item.className = "list-item";
+    item.innerHTML = `
+      <div class="list-num">${i + 1}</div>
+      <div>
+        <div class="list-name">${w.name}</div>
+        <div class="list-meta">Prep: ${w.prep}s</div>
+      </div>
+      <div class="list-dur">${w.duration}s</div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+function renderList() {
+  const container = document.getElementById("list-items");
+  container.innerHTML = "";
+  container.style.cssText = "display:flex;flex-direction:column;gap:10px;width:100%;";
+
+  renderStaticBlock(container, WARMUP, "🔥 WARM-UP · EVERY SESSION");
+
+  let lastSession = null;
+  let sessionNum = 0;
+  allWorkouts.forEach((w) => {
+    if (w.session !== lastSession) {
+      lastSession = w.session;
+      sessionNum = 0;
+      const hdr = document.createElement("div");
+      hdr.style.cssText = "color:var(--muted);font-size:11px;font-weight:700;letter-spacing:3px;margin-top:8px;";
+      hdr.textContent = (w.session || "ALGEMEEN").toUpperCase();
+      container.appendChild(hdr);
+    }
+    sessionNum++;
+    const runIdx = currentWorkouts.indexOf(w);
+    const isActive = phase !== "idle" && phase !== "done" &&
+      selectedSession === w.session && runIdx !== -1 && runIdx === currentIdx;
+    const isDone = phase !== "idle" &&
+      selectedSession === w.session && runIdx !== -1 && runIdx < currentIdx;
+
+    const item = document.createElement("div");
+    item.className = "list-item" + (isActive ? " active" : "") + (isDone ? " done-item" : "");
+    const numClass = isDone ? "list-num done-num" : isActive ? "list-num active-num" : "list-num";
+    const numContent = isDone ? "✓" : sessionNum;
+    item.innerHTML = `
+      <div class="${numClass}">${numContent}</div>
+      <div>
+        <div class="list-name">${w.name}</div>
+        <div class="list-meta">Prep: ${w.prep}s</div>
+      </div>
+      <div class="list-dur">${w.duration}s</div>
+    `;
+    container.appendChild(item);
+  });
+
+  renderStaticBlock(container, COOLDOWN, "🧊 COOL-DOWN · EVERY SESSION");
+}
+
+// ─── TABS ────────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById("view-timer").style.display = tab === "timer" ? "block" : "none";
+  document.getElementById("view-list").style.display = tab === "list" ? "block" : "none";
+  document.getElementById("view-stats").style.display = tab === "stats" ? "block" : "none";
+  document.getElementById("tab-timer").className = "tab" + (tab === "timer" ? " active" : "");
+  document.getElementById("tab-list").className = "tab" + (tab === "list" ? " active" : "");
+  document.getElementById("tab-stats").className = "tab" + (tab === "stats" ? " active" : "");
+  if (tab === "list") renderList();
+  if (tab === "stats") updateStatsDisplay();
+}
+
+// ─── CSV IMPORT ──────────────────────────────────────────────────
+function handleCSV(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const lines = ev.target.result.split(/\r?\n/).filter(l => l.trim());
+      const parsed = [];
+      // Skip header row if first col is not a number
+      const startRow = isNaN(parseInt(lines[0].split(",")[0])) ? 1 : 0;
+      for (let i = startRow; i < lines.length; i++) {
+        // Handle quoted CSV fields
+        const cols = parseCSVLine(lines[i]);
+        if (cols.length < 3) continue;
+        const prep = parseInt(cols[0]);
+        const name = cols[1].trim();
+        const duration = parseInt(cols[2]);
+        const session = (cols[3] || "Algemeen").trim();
+        if (!name || isNaN(prep) || isNaN(duration)) continue;
+        parsed.push({ prep, name, duration, session });
+      }
+      if (parsed.length === 0) {
+        showError("Geen geldige rijen. Formaat: prep_s, naam, duur_s, sessie");
+        return;
+      }
+      allWorkouts = parsed;
+      hideError();
+      selectedSession = null;
+      showSessions();
+      switchTab("timer");
+    } catch(err) {
+      showError("Fout bij lezen CSV: " + err.message);
+    }
+  };
+  reader.readAsText(file, "UTF-8");
+  e.target.value = "";
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = "", inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQuotes = !inQuotes; }
+    else if (c === ',' && !inQuotes) { result.push(cur); cur = ""; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result;
+}
+
+function showError(msg) { showMessage(msg, false); }
+
+function showMessage(msg, isSuccess) {
+  const el = document.getElementById("error-banner");
+  el.textContent = (isSuccess ? "✅ " : "⚠️ ") + msg;
+  el.className = "error-banner" + (isSuccess ? " success" : "");
+  el.style.display = "block";
+  setTimeout(() => el.style.display = "none", 4000);
+}
+function hideError() {
+  document.getElementById("error-banner").style.display = "none";
+}
+
+// ─── STATS ───────────────────────────────────────────────────────
+function formatDuration(totalSecs) {
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+// Returns the Monday (start of ISO week) for a given date, as a Date at midnight local time.
+function weekStart(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay(); // 0=Sun..6=Sat
+  const diffToMonday = (day === 0 ? -6 : 1 - day);
+  d.setDate(d.getDate() + diffToMonday);
+  return d;
+}
+function weekKey(date) {
+  return weekStart(date).toISOString().slice(0, 10);
+}
+
+// A week only counts toward the streak once at least 2 sessions were
+// logged in it. The current (still in-progress) week is skipped rather
+// than breaking the streak, since it may still be completed.
+function calcWeekStreak(history) {
+  if (!history.length) return 0;
+  const counts = {};
+  history.forEach(h => {
+    const k = weekKey(h.date);
+    counts[k] = (counts[k] || 0) + 1;
+  });
+
+  let cursor = weekStart(new Date());
+  const currentKey = cursor.toISOString().slice(0, 10);
+  if (!counts[currentKey] || counts[currentKey] < 2) {
+    // This week hasn't hit 2 sessions yet — don't count it, but don't
+    // break the streak either; start checking from last week instead.
+    cursor.setDate(cursor.getDate() - 7);
+  }
+
+  let streak = 0;
+  let key = cursor.toISOString().slice(0, 10);
+  while (counts[key] >= 2) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 7);
+    key = cursor.toISOString().slice(0, 10);
+  }
+  return streak;
+}
+
+function switchStatsUser(user) {
+  statsUser = user;
+  document.querySelectorAll(".stats-user-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.user === user);
+  });
+  updateStatsDisplay();
+}
+
+function historyForStatsUser() {
+  return workoutHistory.filter(h => h.user === statsUser);
+}
+
+function updateStatsDisplay() {
+  const userHistory = historyForStatsUser();
+  document.getElementById("stat-total").textContent = userHistory.length;
+  const totalSecs = userHistory.reduce((a, h) => a + (h.duration || 0), 0);
+  document.getElementById("stat-time").textContent = formatDuration(totalSecs);
+  document.getElementById("stat-streak").textContent = calcWeekStreak(userHistory) + "🔥";
+  renderWorkloadChart();
+}
+
+// ─── WORKLOAD TREND CHART (SVG bar chart of ratings, 1=light..5=heavy) ──
+function ratingColor(r) {
+  // green (light) -> yellow -> orange -> red (heavy)
+  return ["#10B981", "#84CC16", "#F59E0B", "#F97316", "#DC2626"][r - 1] || "#D1D5DB";
+}
+
+function renderWorkloadChart() {
+  const container = document.getElementById("workload-chart");
+  const rated = historyForStatsUser().filter(h => h.rating).slice(-14); // most recent 14 rated sessions for this person
+  if (!rated.length) {
+    container.innerHTML = `<div class="chart-empty">${statsUser} hasn't rated a workout yet — ratings will start showing the workload trend here.</div>`;
+    return;
+  }
+
+  const W = 320, H = 130;
+  const padL = 8, padR = 8, padTop = 22, padBottom = 22;
+  const chartW = W - padL - padR;
+  const chartH = H - padTop - padBottom;
+  const n = rated.length;
+  const gap = 6;
+  const barW = Math.max(10, (chartW - gap * (n - 1)) / n);
+
+  // Points are placed by their center x (same spacing as bars used), y by rating height
+  const points = rated.map((h, i) => {
+    const x = padL + i * (barW + gap) + barW / 2;
+    const y = padTop + chartH - (h.rating / 5) * chartH;
+    return { x, y, h };
+  });
+
+  const polylinePoints = points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+
+  let dots = "";
+  points.forEach((p) => {
+    const h = p.h;
+    const d = new Date(h.date);
+    const label = `${d.getMonth() + 1}/${d.getDate()}`;
+    dots += `
+      <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="5" fill="${ratingColor(h.rating)}" />
+      <text x="${p.x.toFixed(1)}" y="${(p.y - 10).toFixed(1)}" text-anchor="middle" class="chart-bar-value">${h.rating}</text>
+      ${n <= 10 ? `<text x="${p.x.toFixed(1)}" y="${H - 6}" text-anchor="middle" class="chart-bar-label">${label}</text>` : ""}
+    `;
+  });
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block;">
+      <line x1="${padL}" y1="${padTop + chartH}" x2="${W - padR}" y2="${padTop + chartH}" stroke="var(--border)" stroke-width="1" />
+      <polyline points="${polylinePoints}" fill="none" stroke="var(--green)" stroke-width="2" />
+      ${dots}
+    </svg>
+  `;
+}
+
+// ─── HISTORY CSV EXPORT / IMPORT ──────────────────────────────────
+function csvEscape(str) {
+  str = String(str ?? "");
+  return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+}
+
+function exportHistoryCSV() {
+  if (!workoutHistory.length) {
+    showMessage("No workout history yet to export.", false);
+    return;
+  }
+  const rows = [["date", "session", "duration_seconds", "rating", "user"].join(",")];
+  workoutHistory.forEach(h => {
+    rows.push([h.date, csvEscape(h.session), h.duration, h.rating ?? "", csvEscape(h.user ?? "")].join(","));
+  });
+  const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "workout-history-" + new Date().toISOString().slice(0, 10) + ".csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function handleHistoryCSV(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const lines = ev.target.result.split(/\r?\n/).filter(l => l.trim());
+      const startRow = lines[0] && lines[0].toLowerCase().startsWith("date") ? 1 : 0;
+      const imported = [];
+      for (let i = startRow; i < lines.length; i++) {
+        const cols = parseCSVLine(lines[i]);
+        if (cols.length < 3) continue;
+        const date = cols[0].trim();
+        const session = cols[1].trim();
+        const duration = parseInt(cols[2]);
+        const ratingRaw = (cols[3] || "").trim();
+        const rating = ratingRaw !== "" ? parseInt(ratingRaw) : null;
+        const user = (cols[4] || "").trim() || undefined; // older exports may not have a user column
+        if (!date || !session || isNaN(duration)) continue;
+        imported.push({ date, session, duration, rating: isNaN(rating) ? null : rating, user });
+      }
+      if (!imported.length) {
+        showMessage("No valid rows found. Format: date, session, duration_seconds, rating, user", false);
+        return;
+      }
+      const seen = new Set(workoutHistory.map(h => h.date + "|" + h.session + "|" + h.duration + "|" + (h.user ?? "")));
+      let added = 0;
+      imported.forEach(h => {
+        const key = h.date + "|" + h.session + "|" + h.duration + "|" + (h.user ?? "");
+        if (!seen.has(key)) {
+          workoutHistory.push(h);
+          seen.add(key);
+          added++;
+        }
+      });
+      workoutHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
+      saveHistoryToStorage();
+      updateStatsDisplay();
+      showMessage(`Imported ${added} new entr${added === 1 ? "y" : "ies"} (${imported.length - added} duplicate${imported.length - added === 1 ? "" : "s"} skipped).`, true);
+    } catch (err) {
+      showMessage("Error reading history CSV: " + err.message, false);
+    }
+  };
+  reader.readAsText(file, "UTF-8");
+  e.target.value = "";
+}
+
+function resetHistory() {
+  if (!confirm("Clear all workout history for BOTH people on this device? Export a CSV backup first if you want to keep it — this can't be undone.")) return;
+  workoutHistory = [];
+  saveHistoryToStorage();
+  updateStatsDisplay();
+  showMessage("History cleared.", true);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────
+document.getElementById("chk-warmup").checked = includeWarmup;
+document.getElementById("chk-cooldown").checked = includeCooldown;
+document.getElementById("chk-user-j").checked = userJChecked;
+document.getElementById("chk-user-t").checked = userTChecked;
+showSessions();
+updateStatsDisplay();
+</script>
+</body>
+</html>
