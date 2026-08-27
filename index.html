@@ -1147,10 +1147,10 @@ let allWorkouts = [
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Variety Mix"},
 { prep:5, name:"Full Side Plank", duration:30, session:"The Variety Mix"},
  // ── Test ──────────────────────────────────────
-  { prep:8,  name:"Jumping Jacks",     duration:10, session:"Test" },
-  { prep:5,  name:"Push-ups",          duration:10, session:"Test" },
-  { prep:5,  name:"Squats",            duration:10, session:"Test" },
-  { prep:5,  name:"Plank",             duration:10, session:"Test" },
+  { prep:8,  name:"Jumping Jacks",     duration:10, session:"TestA" },
+  { prep:5,  name:"Push-ups",          duration:10, session:"TestA" },
+  { prep:5,  name:"Squats",            duration:10, session:"TestA" },
+  { prep:5,  name:"Plank",             duration:10, session:"TestA" },
 ];
 
 const SESSION_ICONS = ["🔥","💪","⚡","🏃","🧘","🥊","🚀","🎯"];
@@ -1212,10 +1212,12 @@ function previewPrepSeconds(idx, w, mainStart) {
 // Full preview total (in seconds) for a session, including the session
 // intro and whichever of warm-up/cool-down are currently toggled on.
 function sessionPreviewTotal(name, incWarm, incCool) {
-  const { list, mainStart } = composeSession(name, incWarm, incCool);
+  const composed = composeSession(name, incWarm, incCool);
+  const list = composed.list;
+  const mainStart = composed.mainStart;
   let total = SESSION_INTRO_SECS;
   list.forEach((w, i) => { total += previewPrepSeconds(i, w, mainStart) + w.duration; });
-  return { list, total };
+  return { list: list, total: total };
 }
 
 // ─── STATE ───────────────────────────────────────────────────────
@@ -1443,7 +1445,8 @@ function renderSessionCards() {
 
   keys.forEach((name, i) => {
     const main = sessions[name];
-    const { total: dur } = sessionPreviewTotal(name, includeWarmup, includeCooldown);
+    const previewResult = sessionPreviewTotal(name, includeWarmup, includeCooldown);
+    const dur = previewResult.total;
     const icon = SESSION_ICONS[i % SESSION_ICONS.length];
     const bookendNote = includeWarmup && includeCooldown ? "incl. warm-up & cool-down"
       : includeWarmup ? "incl. warm-up"
@@ -1931,7 +1934,7 @@ function handleCSV(e) {
         const duration = parseInt(cols[2]);
         const session = (cols[3] || "Algemeen").trim();
         if (!name || isNaN(prep) || isNaN(duration)) continue;
-        parsed.push({ prep, name, duration, session });
+        parsed.push({ prep: prep, name: name, duration: duration, session: session });
       }
       if (parsed.length === 0) {
         showError("Geen geldige rijen. Formaat: prep_s, naam, duur_s, sessie");
@@ -2073,7 +2076,7 @@ function renderWorkloadChart() {
   const points = rated.map((h, i) => {
     const x = padL + i * (barW + gap) + barW / 2;
     const y = padTop + chartH - (h.rating / 5) * chartH;
-    return { x, y, h };
+    return { x: x, y: y, h: h };
   });
 
   const polylinePoints = points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
@@ -2144,7 +2147,7 @@ function handleHistoryCSV(e) {
         const rating = ratingRaw !== "" ? parseInt(ratingRaw) : null;
         const user = (cols[4] || "").trim() || undefined; // older exports may not have a user column
         if (!date || !session || isNaN(duration)) continue;
-        imported.push({ date, session, duration, rating: isNaN(rating) ? null : rating, user });
+        imported.push({ date: date, session: session, duration: duration, rating: isNaN(rating) ? null : rating, user: user });
       }
       if (!imported.length) {
         showMessage("No valid rows found. Format: date, session, duration_seconds, rating, user", false);
