@@ -43,6 +43,7 @@
     font-family: var(--font-ui);
     color: var(--text);
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex; flex-direction: column; align-items: center;
     padding-bottom: 48px;
   }
@@ -1237,12 +1238,6 @@ const COOLDOWN = [
   { name:"Triceps Stretch Right",    duration:20, prep:3, type:"cooldown" },
 ];
 
-// Universal 10-second lead-in before the very first exercise of a
-// session (warm-up or main, whichever comes first) — announces the
-// session name, then counts "Three, Two, One, Go!" instead of that
-// first exercise's own prep announcement.
-const SESSION_INTRO_SECS = 10;
-
 // Builds the full step list for a session given whether warm-up/cool-down
 // are included. Used both for the real run (beginWorkout) and for preview
 // totals on the session cards — for the real run the main exercises are
@@ -1261,7 +1256,9 @@ function composeSession(name, incWarm, incCool) {
 
 // True if step `idx` is the first exercise of a section (Warm-up, Core,
 // or Cool-down) — the start of the very first section, the warm-up →
-// core boundary, and the core → cool-down boundary.
+// core boundary, and the core → cool-down boundary. Each of these gets
+// a single 10-second "get ready" announcement (see SECTION_ANNOUNCE_SECS)
+// instead of that exercise's own normal prep time.
 function isSectionStart(idx, mainStart, mainEnd) {
   return idx === 0 || idx === mainStart || idx === mainEnd;
 }
@@ -1275,11 +1272,13 @@ function previewPrepSeconds(idx, w, mainStart, mainEnd) {
   return w.prep || 0;
 }
 
-// Full preview total (in seconds) for a session, including the session
-// intro and whichever of warm-up/cool-down are currently toggled on.
+// Full preview total (in seconds) for a session, including whichever of
+// warm-up/cool-down are currently toggled on. The very first step's 10s
+// section announcement already covers the "get ready for the session"
+// moment, so there's no separate intro time to add on top.
 function sessionPreviewTotal(name, incWarm, incCool) {
   const { list, mainStart, mainEnd } = composeSession(name, incWarm, incCool);
-  let total = SESSION_INTRO_SECS;
+  let total = 0;
   list.forEach((w, i) => { total += previewPrepSeconds(i, w, mainStart, mainEnd) + w.duration; });
   return { list, total };
 }
@@ -1329,7 +1328,7 @@ function saveHistoryToStorage() {
 }
 
 // ─── AUDIO ───────────────────────────────────────────────────────
-const AudioCtx = window.AudioContext || window.webkitAudioContext;
+const AudioCtx = window.AudioContext;
 let audioCtx = null;
 
 function getAudioCtx() {
@@ -1366,10 +1365,18 @@ function playStartBeep() {
 }
 
 // ─── SPEECH ──────────────────────────────────────────────────────
-// ─── SPEECH ──────────────────────────────────────────────────────
-// Tries to pick a female English voice; falls back to default
+// Tries to pick a female English voice; falls back to default.
+// getVoices() can return an empty list until the browser finishes
+// loading them asynchronously, so we cache the result once it fires.
+let cachedVoices = [];
+function loadVoices() { cachedVoices = window.speechSynthesis.getVoices(); }
+if (window.speechSynthesis) {
+  loadVoices();
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+}
+
 function getVoice() {
-  const voices = window.speechSynthesis.getVoices();
+  const voices = cachedVoices.length ? cachedVoices : window.speechSynthesis.getVoices();
   // Prefer high-quality female English voices (Samantha, Karen, Moira on iOS)
   const preferred = ["Samantha", "Karen", "Moira", "Tessa", "Fiona"];
   for (const name of preferred) {
@@ -1531,7 +1538,7 @@ function renderSessionCards() {
   // Auto-select first
   if (!selectedSession || !sessions[selectedSession]) {
     selectedSession = keys[0];
-    var firstCard = container.querySelector(".session-card");
+    const firstCard = container.querySelector(".session-card");
     if (firstCard) firstCard.classList.add("selected");
   }
 }
@@ -1570,7 +1577,7 @@ function beginWorkout() {
   document.getElementById("done-screen").style.display = "none";
   renderProgressBar();
   resetMidMotivations();
-  startSessionIntro();
+  startPhase(0, "prep");
 }
 
 // The interval before the exercise at `idx` starts. Overridden to
@@ -1599,30 +1606,6 @@ function sectionNameFor(idx) {
   return "Core";
 }
 
-// ─── SESSION INTRO (10s "Get ready for X" → Three, Two, One, Go!) ──
-function startSessionIntro() {
-  phase = "intro";
-  currentIdx = -1;
-  seconds = SESSION_INTRO_SECS;
-  totalSeconds = SESSION_INTRO_SECS;
-  running = true;
-
-  updateCircle();
-  document.getElementById("ex-count").textContent = "GET READY";
-  document.getElementById("ex-name").textContent = selectedSession;
-  const sub = document.getElementById("ex-sub");
-  sub.textContent = "Starting soon…";
-  sub.style.color = "#F59E0B";
-  document.getElementById("header-sub").textContent = "GET READY · " + selectedSession.toUpperCase();
-  updateNextUp();   // shows the first exercise as "next up"
-  updateProgressBar();
-
-  speak(`Get ready for ${selectedSession}`);
-
-  clearInterval(timerInterval);
-  timerInterval = setInterval(tick, 1000);
-}
-
 function startPhase(idx, ph) {
   currentIdx = idx;
   phase = ph;
@@ -1638,12 +1621,19 @@ function startPhase(idx, ph) {
   updateProgressBar();
 
   // Speak exercise name during prep. Section boundaries (Warm-up, Core,
-  // Cool-down) get a section announcement instead; otherwise warm-up/
-  // cool-down exercises get a plain, consistent "Next up" announcement,
-  // and motivational variation is reserved for the core session.
+  // Cool-down) get a single 10s "get ready" announcement that also names
+  // the first exercise of that section; the very first one additionally
+  // names the session itself. Otherwise warm-up/cool-down exercises get
+  // a plain, consistent "Next up" announcement, and motivational
+  // variation is reserved for the core session.
   if (ph === "prep") {
     if (isSectionStart(idx, mainStartIdx, mainEndIdx)) {
-      speak(sectionNameFor(idx));
+      const sectionName = sectionNameFor(idx);
+      if (idx === 0) {
+        speak(`Get ready for ${selectedSession}. ${sectionName}: ${w.name}`);
+      } else {
+        speak(`Get ready for ${sectionName}: ${w.name}`);
+      }
     } else if (isBookend(idx)) {
       speak(`Next up, ${w.name}`);
     } else {
@@ -1659,35 +1649,20 @@ function tick() {
   if (!running) return;
   seconds--;
 
-  // Session intro: always speaks the countdown (it's the one universal
-  // "Three, Two, One, Go!" moment before the very first exercise).
-  if (phase === "intro") {
-    if (seconds <= 3 && seconds > 0) {
-      playCountdownBeep(seconds);
-      if (seconds === 3) speak("Three");
-      else if (seconds === 2) speak("Two");
-      else if (seconds === 1) speak("One");
-    }
-    updateCircle();
-    if (seconds <= 0) {
-      clearInterval(timerInterval);
-      advance();
-    }
-    return;
-  }
-
   const bookend = isBookend(currentIdx);
+  const sectionStartPrep = phase === "prep" && isSectionStart(currentIdx, mainStartIdx, mainEndIdx);
 
   // Mid-workout motivations only apply to the core session
   if (!bookend) checkMidMotivation();
 
-  // Countdown beeps at 3, 2, 1. Spoken numbers are reserved for the
-  // core session — during warm-up/cool-down the numbers talk over the
-  // "Next up" announcement, so we stay silent here and just say "Go"
-  // once work starts instead (see advance()).
+  // Countdown beeps at 3, 2, 1. Spoken numbers are reserved for the core
+  // session and for section-start announcements (Warm-up/Core/Cool-down)
+  // — during ordinary warm-up/cool-down reps the numbers would talk over
+  // the "Next up" announcement, so we stay silent there and just say
+  // "Go" once work starts instead (see advance()).
   if (seconds <= 3 && seconds > 0) {
     playCountdownBeep(seconds);
-    if (!bookend) {
+    if (!bookend || sectionStartPrep) {
       if (seconds === 3) speak("Three");
       else if (seconds === 2) speak("Two");
       else if (seconds === 1) speak("One");
@@ -1703,12 +1678,7 @@ function tick() {
 }
 
 function advance() {
-  if (phase === "intro") {
-    // Intro countdown is done — now start exercise #0's own normal
-    // prep step (countdown + name announcement), same as every other
-    // exercise gets between reps.
-    startPhase(0, prepSecondsFor(0, currentWorkouts[0]) > 0 ? "prep" : "work");
-  } else if (phase === "prep") {
+  if (phase === "prep") {
     playStartBeep();
     speak("Go!");
     startPhase(currentIdx, "work");
@@ -1730,7 +1700,7 @@ function finishWorkout() {
   playBeep(523, 0.1); setTimeout(() => playBeep(659, 0.1), 120); setTimeout(() => playBeep(784, 0.3), 240);
   document.getElementById("timer-screen").style.display = "none";
   document.getElementById("done-screen").style.display = "block";
-  const total = SESSION_INTRO_SECS + currentWorkouts.reduce((a, w, i) => a + prepSecondsFor(i, w) + w.duration, 0);
+  const total = currentWorkouts.reduce((a, w, i) => a + prepSecondsFor(i, w) + w.duration, 0);
   const users = sessionUsers.length ? sessionUsers : ["J"]; // safety fallback, shouldn't normally happen
   document.getElementById("done-sub").textContent =
     `${currentWorkouts.length} exercises · ${formatTime(total)} totaal · ${users.join(" & ")}`;
@@ -1838,7 +1808,7 @@ function updateCircle() {
   txt.textContent = formatTime(seconds);
 
   let color, glow, label;
-  if (phase === "prep" || phase === "intro") {
+  if (phase === "prep") {
     color = "#F59E0B"; glow = "rgba(245,158,11,0.4)"; label = "GET READY";
     ring.className = "pulse-ring yellow";
   } else if (seconds <= 3 && seconds > 0) {
