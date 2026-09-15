@@ -62,6 +62,8 @@
     box-shadow: var(--shadow); transition: background 0.2s;
   }
   .btn-import:active { background: #F3F4F6; }
+  .btn-lock.active { background: var(--green-light); border-color: var(--green); color: var(--green); }
+  .header-actions { display:flex; align-items:center; gap:8px; }
 
   /* TABS */
   .tabs {
@@ -302,7 +304,10 @@
     <div class="logo">WORKOUT<span>.</span>TIMER</div>
     <div class="logo-sub" id="header-sub">CHOOSE A SESSION</div>
   </div>
-  <button class="btn-import" onclick="document.getElementById('csv-file').click()" title="Import exercises/sessions CSV">📂 CSV</button>
+  <div class="header-actions">
+    <button class="btn-import btn-lock" id="btn-lock" onclick="toggleWakeLock()" title="Keep screen awake during workout">🔓 LOCK</button>
+    <button class="btn-import" onclick="document.getElementById('csv-file').click()" title="Import exercises/sessions CSV">📂 CSV</button>
+  </div>
   <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="handleCSV(event)">
 </div>
 
@@ -344,10 +349,11 @@
       </label>
     </div>
 
+    <button class="btn-start-session" onclick="beginWorkout()" id="btn-begin" style="width:100%; max-width:472px; margin-top:8px;">▶ START SESSION</button>
+
     <div id="session-cards">
       <!-- Rendered dynamically by renderSessionCards() from allWorkouts, see script below -->
     </div>
-    <button class="btn-start-session" onclick="beginWorkout()" id="btn-begin" style="width:100%; max-width:472px; margin-top:8px;">▶ START SESSION</button>
   </div>
 
   <!-- ACTIVE TIMER -->
@@ -457,6 +463,55 @@
 </div>
 
 <script>
+// ─── SCREEN WAKE LOCK ────────────────────────────────────────────
+// Keeps the screen from sleeping/locking during a workout. Toggled via
+// the 🔒 LOCK button in the header, next to the CSV button.
+let wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    updateWakeLockButton(true);
+    wakeLock.addEventListener('release', () => {
+      wakeLock = null;
+      updateWakeLockButton(false);
+    });
+  } catch (err) {
+    updateWakeLockButton(false);
+  }
+}
+
+async function releaseWakeLock() {
+  if (wakeLock) {
+    await wakeLock.release();
+    wakeLock = null;
+  }
+  updateWakeLockButton(false);
+}
+
+function toggleWakeLock() {
+  if (wakeLock) {
+    releaseWakeLock();
+  } else {
+    requestWakeLock();
+  }
+}
+
+function updateWakeLockButton(active) {
+  const btn = document.getElementById("btn-lock");
+  if (!btn) return;
+  btn.classList.toggle("active", active);
+  btn.innerHTML = active ? "🔒 LOCK" : "🔓 LOCK";
+}
+
+// Re-acquire the lock if the page becomes visible again
+// (the OS releases it automatically when you switch tabs/apps)
+document.addEventListener('visibilitychange', async () => {
+  if (wakeLock !== null && document.visibilityState === 'visible') {
+    await requestWakeLock();
+  }
+});
+
 // ─── INGEBAKKEN DATA ─────────────────────────────────────────────
 // Pas deze lijst aan om je eigen exercises en sessies te beheren.
 // Formaat: { prep: seconden, name: "naam", duration: seconden, session: "sessienaam" }
@@ -474,7 +529,8 @@ let allWorkouts = [
 { prep:5, name:"High Knees", duration:30, session:"Original 7 Minute"},
 { prep:5, name:"Lunge", duration:30, session:"Original 7 Minute"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"Original 7 Minute"},
-{ prep:5, name:"Side Plank", duration:30, session:"Original 7 Minute"},
+{ prep:5, name:"Side Plank - Left", duration:15, session:"Original 7 Minute"},
+{ prep:5, name:"Side Plank- Right", duration:15, session:"Original 7 Minute"},
 { prep:5, name:"Wall Sit", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Push-up", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"3x Original 7 Minute"},
@@ -485,7 +541,8 @@ let allWorkouts = [
 { prep:5, name:"High Knees", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Lunge", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"3x Original 7 Minute"},
-{ prep:5, name:"Side Plank", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Side Plank - Left", duration:15, session:"3x Original 7 Minute"},
+{ prep:5, name:"Side Plank- Right", duration:15, session:"3x Original 7 Minute"},
 { prep:5, name:"Round 2 - Jumping Jacks", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Wall Sit", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Push-up", duration:30, session:"3x Original 7 Minute"},
@@ -497,7 +554,8 @@ let allWorkouts = [
 { prep:5, name:"High Knees", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Lunge", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"3x Original 7 Minute"},
-{ prep:5, name:"Side Plank", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Side Plank - Left", duration:15, session:"3x Original 7 Minute"},
+{ prep:5, name:"Side Plank- Right", duration:15, session:"3x Original 7 Minute"},
 { prep:5, name:"Round 3 - Jumping Jacks", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Wall Sit", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Push-up", duration:30, session:"3x Original 7 Minute"},
@@ -509,7 +567,8 @@ let allWorkouts = [
 { prep:5, name:"High Knees", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Lunge", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"3x Original 7 Minute"},
-{ prep:5, name:"Side Plank", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Side Plank - Left", duration:15, session:"3x Original 7 Minute"},
+{ prep:5, name:"Side Plank- Right", duration:15, session:"3x Original 7 Minute"},
 { prep:5, name:"Jumping Jacks", duration:30, session:"Intermediate 16 Minute"},
 { prep:5, name:"Side Lunge", duration:30, session:"Intermediate 16 Minute"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"Intermediate 16 Minute"},
@@ -1158,17 +1217,17 @@ const SESSION_ICONS = ["🔥","💪","⚡","🏃","🧘","🥊","🚀","🎯"];
 // ─── WARM-UP / COOL-DOWN ───────────────────────────────────────────
 // These bookend every session automatically — not tied to a specific
 // session, so they aren't part of allWorkouts / CSV import-export.
-const WARMUP_TRANSITION_SECS = 5; // interval after warm-up, before the workout starts
+const SECTION_ANNOUNCE_SECS = 10; // interval used when announcing a new section: Warm-up, Core, Cool-down
 const WARMUP = [
   { name:"Shoulder Roll Forward",  duration:15, prep:3, type:"warmup" },
   { name:"Shoulder Roll Backward", duration:15, prep:3, type:"warmup" },
-  { name:"Knee Hugs",              duration:30, prep:3, type:"warmup" },
-  { name:"Torso Rotation",         duration:30, prep:3, type:"warmup" },
   { name:"Arm Hugs",               duration:30, prep:3, type:"warmup" },
+  { name:"Knee Hugs",              duration:30, prep:3, type:"warmup" },
+  { name:"Torso Rotation",         duration:30, prep:3, type:"warmup" }, 
 ];
 const COOLDOWN = [
-  { name:"Single-leg Stretch Left",  duration:20, prep:3, type:"cooldown" },
-  { name:"Single-leg Stretch Right", duration:20, prep:3, type:"cooldown" },
+  { name:"Single-leg Stretch Left",  duration:25, prep:3, type:"cooldown" },
+  { name:"Single-leg Stretch Right", duration:25, prep:3, type:"cooldown" },
   { name:"Quadriceps Stretch Left",  duration:20, prep:3, type:"cooldown" },
   { name:"Quadriceps Stretch Right", duration:20, prep:3, type:"cooldown" },
   { name:"Arm Stretch Above",        duration:20, prep:3, type:"cooldown" },
@@ -1200,24 +1259,29 @@ function composeSession(name, incWarm, incCool) {
   };
 }
 
+// True if step `idx` is the first exercise of a section (Warm-up, Core,
+// or Cool-down) — the start of the very first section, the warm-up →
+// core boundary, and the core → cool-down boundary.
+function isSectionStart(idx, mainStart, mainEnd) {
+  return idx === 0 || idx === mainStart || idx === mainEnd;
+}
+
 // Prep seconds to use for step `idx` in a composed list, given where the
-// main section starts. The warm-up → main-workout boundary gets the
-// fixed WARMUP_TRANSITION_SECS; everything else, including exercise 0,
-// uses its own defined prep value.
-function previewPrepSeconds(idx, w, mainStart) {
-  if (idx === mainStart) return WARMUP_TRANSITION_SECS;
+// main section starts/ends. Every section boundary (Warm-up, Core,
+// Cool-down) gets the fixed SECTION_ANNOUNCE_SECS; everything else uses
+// its own defined prep value.
+function previewPrepSeconds(idx, w, mainStart, mainEnd) {
+  if (isSectionStart(idx, mainStart, mainEnd)) return SECTION_ANNOUNCE_SECS;
   return w.prep || 0;
 }
 
 // Full preview total (in seconds) for a session, including the session
 // intro and whichever of warm-up/cool-down are currently toggled on.
 function sessionPreviewTotal(name, incWarm, incCool) {
-  const composed = composeSession(name, incWarm, incCool);
-  const list = composed.list;
-  const mainStart = composed.mainStart;
+  const { list, mainStart, mainEnd } = composeSession(name, incWarm, incCool);
   let total = SESSION_INTRO_SECS;
-  list.forEach((w, i) => { total += previewPrepSeconds(i, w, mainStart) + w.duration; });
-  return { list: list, total: total };
+  list.forEach((w, i) => { total += previewPrepSeconds(i, w, mainStart, mainEnd) + w.duration; });
+  return { list, total };
 }
 
 // ─── STATE ───────────────────────────────────────────────────────
@@ -1445,8 +1509,7 @@ function renderSessionCards() {
 
   keys.forEach((name, i) => {
     const main = sessions[name];
-    const previewResult = sessionPreviewTotal(name, includeWarmup, includeCooldown);
-    const dur = previewResult.total;
+    const { total: dur } = sessionPreviewTotal(name, includeWarmup, includeCooldown);
     const icon = SESSION_ICONS[i % SESSION_ICONS.length];
     const bookendNote = includeWarmup && includeCooldown ? "incl. warm-up & cool-down"
       : includeWarmup ? "incl. warm-up"
@@ -1511,11 +1574,11 @@ function beginWorkout() {
 }
 
 // The interval before the exercise at `idx` starts. Overridden to
-// WARMUP_TRANSITION_SECS right at the warm-up → real-workout boundary,
-// otherwise uses that exercise's own prep value. Exercise 0 now gets a
-// normal prep step too — the session intro no longer replaces it.
+// SECTION_ANNOUNCE_SECS right at each section boundary (start of
+// Warm-up, start of Core, start of Cool-down), otherwise uses that
+// exercise's own prep value.
 function prepSecondsFor(idx, w) {
-  return idx === mainStartIdx ? WARMUP_TRANSITION_SECS : (w.prep || 0);
+  return isSectionStart(idx, mainStartIdx, mainEndIdx) ? SECTION_ANNOUNCE_SECS : (w.prep || 0);
 }
 
 // True if the exercise at this index is part of the warm-up or cool-down
@@ -1526,6 +1589,14 @@ function isBookend(idx) {
   const item = currentWorkouts[idx];
   const t = item ? item.type : undefined;
   return t === "warmup" || t === "cooldown";
+}
+
+// Human-readable section name for step `idx`, used for the section
+// announcement ("Warm-up" / "Core" / "Cool-down") at each boundary.
+function sectionNameFor(idx) {
+  if (idx < mainStartIdx) return "Warm-up";
+  if (idx >= mainEndIdx) return "Cool-down";
+  return "Core";
 }
 
 // ─── SESSION INTRO (10s "Get ready for X" → Three, Two, One, Go!) ──
@@ -1566,11 +1637,14 @@ function startPhase(idx, ph) {
   updateNextUp();
   updateProgressBar();
 
-  // Speak exercise name during prep. Warm-up/cool-down get a plain,
-  // consistent "Next up" announcement; motivational variation is
-  // reserved for the core session.
+  // Speak exercise name during prep. Section boundaries (Warm-up, Core,
+  // Cool-down) get a section announcement instead; otherwise warm-up/
+  // cool-down exercises get a plain, consistent "Next up" announcement,
+  // and motivational variation is reserved for the core session.
   if (ph === "prep") {
-    if (isBookend(idx)) {
+    if (isSectionStart(idx, mainStartIdx, mainEndIdx)) {
+      speak(sectionNameFor(idx));
+    } else if (isBookend(idx)) {
       speak(`Next up, ${w.name}`);
     } else {
       speak(pickPhrase(PREP_PHRASES)(w.name));
@@ -1934,7 +2008,7 @@ function handleCSV(e) {
         const duration = parseInt(cols[2]);
         const session = (cols[3] || "Algemeen").trim();
         if (!name || isNaN(prep) || isNaN(duration)) continue;
-        parsed.push({ prep: prep, name: name, duration: duration, session: session });
+        parsed.push({ prep, name, duration, session });
       }
       if (parsed.length === 0) {
         showError("Geen geldige rijen. Formaat: prep_s, naam, duur_s, sessie");
@@ -2076,7 +2150,7 @@ function renderWorkloadChart() {
   const points = rated.map((h, i) => {
     const x = padL + i * (barW + gap) + barW / 2;
     const y = padTop + chartH - (h.rating / 5) * chartH;
-    return { x: x, y: y, h: h };
+    return { x, y, h };
   });
 
   const polylinePoints = points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
@@ -2147,7 +2221,7 @@ function handleHistoryCSV(e) {
         const rating = ratingRaw !== "" ? parseInt(ratingRaw) : null;
         const user = (cols[4] || "").trim() || undefined; // older exports may not have a user column
         if (!date || !session || isNaN(duration)) continue;
-        imported.push({ date: date, session: session, duration: duration, rating: isNaN(rating) ? null : rating, user: user });
+        imported.push({ date, session, duration, rating: isNaN(rating) ? null : rating, user });
       }
       if (!imported.length) {
         showMessage("No valid rows found. Format: date, session, duration_seconds, rating, user", false);
