@@ -256,9 +256,30 @@
   }
   .stats-user-btn.active { border-color:var(--green); background:#ECFDF5; color:var(--green); }
 
+  /* Per-person stats panel. On phones, only the active one shows (toggled
+     via the J/T buttons above); on wider screens (iPad+) both show at once
+     side by side and the toggle becomes unnecessary — see the media query
+     below. */
+  .stats-columns { display:flex; flex-direction:column; width:100%; }
+  .stats-panel { display:none; flex-direction:column; gap:16px; width:100%; }
+  .stats-panel.active { display:flex; }
+  .stats-panel-title { display:none; }
+
+  @media (min-width: 768px) {
+    .stats-screen { max-width:920px; }
+    .stats-user-toggle { display:none; }
+    .stats-columns { flex-direction:row; gap:24px; align-items:flex-start; }
+    .stats-panel { display:flex !important; flex:1; min-width:0; }
+    .stats-panel-title {
+      display:block; font-size:15px; font-weight:800; color:var(--text);
+      text-align:center; margin-bottom:-4px;
+    }
+  }
+
   #eval-container { display:flex; flex-direction:column; gap:14px; align-items:center; width:100%; }
   .chart-empty { font-size:13px; color:var(--muted); text-align:center; padding:20px 10px; }
   .chart-bar-label { font-size:9px; fill:var(--muted); font-family:var(--font-ui); }
+  .chart-y-emoji { font-size:11px; }
   .chart-bar-value { font-size:10px; font-weight:700; fill:var(--text2); font-family:var(--font-ui); }
 
   /* EVALUATION (sweat-emoji workload rating on done screen) */
@@ -399,7 +420,7 @@
   <!-- DONE SCREEN -->
   <div class="done-screen" id="done-screen" style="display:none">
     <div class="done-emoji">🎉</div>
-    <div class="done-title">WORKOUT KLAAR!</div>
+    <div class="done-title">WORKOUT FINISHED!</div>
     <div class="done-sub" id="done-sub"></div>
 
     <div id="eval-container"></div>
@@ -428,24 +449,62 @@
       <button class="stats-user-btn" data-user="T" onclick="switchStatsUser('T')">🧑 T</button>
     </div>
 
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-value" id="stat-total">0</div>
-        <div class="stat-label">WORKOUTS DONE</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-time">0m</div>
-        <div class="stat-label">TOTAL TIME</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-streak">0🔥</div>
-        <div class="stat-label">WEEK STREAK</div>
-      </div>
-    </div>
+    <div class="stats-columns">
+      <div class="stats-panel active" id="stats-panel-J" data-user="J">
+        <div class="stats-panel-title">🧑 J</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-total-J">0</div>
+            <div class="stat-label">WORKOUTS DONE</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-time-J">0m</div>
+            <div class="stat-label">TOTAL TIME</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-streak-J">0🔥</div>
+            <div class="stat-label">WEEK STREAK</div>
+          </div>
+        </div>
 
-    <div class="chart-card">
-      <div class="chart-title">WORKLOAD TREND (recent sessions, 🥵 = heavy)</div>
-      <div id="workload-chart"></div>
+        <div class="chart-card">
+          <div class="chart-title">WORKLOAD TREND (recent sessions, 🥵 = heavy)</div>
+          <div id="workload-chart-J"></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">WEEKLY MINUTES (number above bar = sessions that week)</div>
+          <div id="weekly-chart-J"></div>
+        </div>
+      </div>
+
+      <div class="stats-panel" id="stats-panel-T" data-user="T">
+        <div class="stats-panel-title">🧑 T</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value" id="stat-total-T">0</div>
+            <div class="stat-label">WORKOUTS DONE</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-time-T">0m</div>
+            <div class="stat-label">TOTAL TIME</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="stat-streak-T">0🔥</div>
+            <div class="stat-label">WEEK STREAK</div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">WORKLOAD TREND (recent sessions, 🥵 = heavy)</div>
+          <div id="workload-chart-T"></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">WEEKLY MINUTES (number above bar = sessions that week)</div>
+          <div id="weekly-chart-T"></div>
+        </div>
+      </div>
     </div>
 
     <div class="list-hint">
@@ -519,7 +578,7 @@ document.addEventListener('visibilitychange', async () => {
 // Je kunt ook nog een CSV importeren via de knop rechtsboven om dit te vervangen.
 let allWorkouts = [
   // ── Full Workout (±15 min) ────────────────────────────────────
-  { prep:5, name:"Jumping Jacks", duration:30, session:"Original 7 Minute"},
+{ prep:5, name:"Jumping Jacks", duration:30, session:"Original 7 Minute"},
 { prep:5, name:"Wall Sit", duration:30, session:"Original 7 Minute"},
 { prep:5, name:"Push-up", duration:30, session:"Original 7 Minute"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"Original 7 Minute"},
@@ -530,8 +589,8 @@ let allWorkouts = [
 { prep:5, name:"High Knees", duration:30, session:"Original 7 Minute"},
 { prep:5, name:"Lunge", duration:30, session:"Original 7 Minute"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"Original 7 Minute"},
-{ prep:5, name:"Side Plank - Left", duration:15, session:"Original 7 Minute"},
-{ prep:5, name:"Side Plank- Right", duration:15, session:"Original 7 Minute"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"Original 7 Minute"},
+{ prep:5, name:"First Cycle - Jumping Jacks", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Wall Sit", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Push-up", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"3x Original 7 Minute"},
@@ -542,9 +601,8 @@ let allWorkouts = [
 { prep:5, name:"High Knees", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Lunge", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"3x Original 7 Minute"},
-{ prep:5, name:"Side Plank - Left", duration:15, session:"3x Original 7 Minute"},
-{ prep:5, name:"Side Plank- Right", duration:15, session:"3x Original 7 Minute"},
-{ prep:5, name:"Round 2 - Jumping Jacks", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"3x Original 7 Minute"},
+{ prep:10, name:"Second Cycle - Jumping Jacks", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Wall Sit", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Push-up", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"3x Original 7 Minute"},
@@ -555,9 +613,8 @@ let allWorkouts = [
 { prep:5, name:"High Knees", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Lunge", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"3x Original 7 Minute"},
-{ prep:5, name:"Side Plank - Left", duration:15, session:"3x Original 7 Minute"},
-{ prep:5, name:"Side Plank- Right", duration:15, session:"3x Original 7 Minute"},
-{ prep:5, name:"Round 3 - Jumping Jacks", duration:30, session:"3x Original 7 Minute"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"3x Original 7 Minute"},
+{ prep:10, name:"Third Cycle - Jumping Jacks", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Wall Sit", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Push-up", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"3x Original 7 Minute"},
@@ -568,67 +625,66 @@ let allWorkouts = [
 { prep:5, name:"High Knees", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Lunge", duration:30, session:"3x Original 7 Minute"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"3x Original 7 Minute"},
-{ prep:5, name:"Side Plank - Left", duration:15, session:"3x Original 7 Minute"},
-{ prep:5, name:"Side Plank- Right", duration:15, session:"3x Original 7 Minute"},
-{ prep:5, name:"Jumping Jacks", duration:30, session:"Intermediate 16 Minute"},
-{ prep:5, name:"Side Lunge", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"3x Original 7 Minute"},
+{ prep:5, name:"First Cycle - Jumping Jacks", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"Intermediate 16 Minute"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"Intermediate 16 Minute"},
-{ prep:5, name:"One-Leg Bridge", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"One-Leg Bridge -- Switch Leg", duration:32, session:"Intermediate 16 Minute"},
 { prep:5, name:"High Knees", duration:30, session:"Intermediate 16 Minute"},
-{ prep:5, name:"Chair Split Squat", duration:30, session:"Intermediate 16 Minute"},
-{ prep:5, name:"One-Leg Tricpes Dip", duration:30, session:"Intermediate 16 Minute"},
-{ prep:5, name:"Bicylcle Crunch", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"Intermediate 16 Minute"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"Intermediate 16 Minute"},
 { prep:5, name:"Side-to-side hop", duration:30, session:"Intermediate 16 Minute"},
 { prep:5, name:"Lunge & Rotation", duration:30, session:"Intermediate 16 Minute"},
-{ prep:5, name:"One-Leg Push-up", duration:30, session:"Intermediate 16 Minute"},
-{ prep:5, name:"Side Plank", duration:30, session:"Intermediate 16 Minute"},
-{ prep:5, name:"Jumping Jacks", duration:30, session:"Intermediate 16 Minute"},
-{ prep:5, name:"Side Lunge", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"Intermediate 16 Minute"},
+{ prep:10, name:"Second Cycle - Jumping Jacks", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"Intermediate 16 Minute"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"Intermediate 16 Minute"},
-{ prep:5, name:"One-Leg Bridge", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"One-Leg Bridge -- Switch Leg", duration:32, session:"Intermediate 16 Minute"},
 { prep:5, name:"High Knees", duration:30, session:"Intermediate 16 Minute"},
-{ prep:5, name:"Chair split Squat", duration:30, session:"Intermediate 16 Minute"},
-{ prep:5, name:"One-Leg Tricpes Dip", duration:30, session:"Intermediate 16 Minute"},
-{ prep:5, name:"Bicylcle Crunch", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"Intermediate 16 Minute"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"Intermediate 16 Minute"},
 { prep:5, name:"Side-to-side hop", duration:30, session:"Intermediate 16 Minute"},
 { prep:5, name:"Lunge & Rotation", duration:30, session:"Intermediate 16 Minute"},
-{ prep:5, name:"One-Leg Push-up", duration:30, session:"Intermediate 16 Minute"},
-{ prep:5, name:"Side Plank", duration:30, session:"Intermediate 16 Minute"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"Intermediate 16 Minute"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"Intermediate 16 Minute"},
 { prep:5, name:"Step-up", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Squat", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Push-up", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Bird Dog", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Jumping Jacks", duration:30, session:"The Mountain Peak"},
-{ prep:5, name:"Side Lunge", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"The Mountain Peak"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"The Mountain Peak"},
-{ prep:5, name:"One-Leg Bridge", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"One-Leg Bridge -- Switch Leg", duration:32, session:"The Mountain Peak"},
 { prep:5, name:"Mountain Climbers", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Power Squat", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Spiderman Push-up", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Plank", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"High Knees", duration:30, session:"The Mountain Peak"},
-{ prep:5, name:"Chair Split Squat", duration:30, session:"The Mountain Peak"},
-{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The Mountain Peak"},
-{ prep:5, name:"Bicylcle Crunch", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"The Mountain Peak"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"The Mountain Peak"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Squat & Box", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Lunge", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Triceps Dip", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Side-to-side hop", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Lunge & Rotation", duration:30, session:"The Mountain Peak"},
-{ prep:5, name:"One-Leg Push-up", duration:30, session:"The Mountain Peak"},
-{ prep:5, name:"Side Plank", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"The Mountain Peak"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"The Mountain Peak"},
 { prep:5, name:"Burpees", duration:30, session:"The Mountain Peak"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Mountain Peak"},
-{ prep:5, name:"Hinud Push-up", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"The Mountain Peak"},
+{ prep:5, name:"Hindu Push-up", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Reverse Plank", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Jumping Jacks", duration:30, session:"The Mountain Peak"},
-{ prep:5, name:"Side Lunge", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"The Mountain Peak"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"The Mountain Peak"},
-{ prep:5, name:"One-Leg Bridge", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"One-Leg Bridge -- Switch Leg", duration:32, session:"The Mountain Peak"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Wall Sit", duration:30, session:"The Mountain Peak"},
-{ prep:5, name:"Staggered Push-up", duration:30, session:"The Mountain Peak"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"The Mountain Peak"},
 { prep:5, name:"Superman", duration:30, session:"The Mountain Peak"},
 { prep:5, name:"Step-up", duration:30, session:"Beginner Alternate 7 Minute"},
 { prep:5, name:"Squat", duration:30, session:"Beginner Alternate 7 Minute"},
@@ -640,15 +696,15 @@ let allWorkouts = [
 { prep:5, name:"Abdominal Crunch", duration:30, session:"Beginner Alternate 7 Minute"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"Beginner Alternate 7 Minute"},
 { prep:5, name:"Wall Sit", duration:30, session:"Beginner Alternate 7 Minute"},
-{ prep:5, name:"Staggered Push-up", duration:30, session:"Beginner Alternate 7 Minute"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"Beginner Alternate 7 Minute"},
 { prep:5, name:"Superman", duration:30, session:"Beginner Alternate 7 Minute"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"The 8 Minute Workout"},
 { prep:5, name:"Wall Sit", duration:30, session:"The 8 Minute Workout"},
-{ prep:5, name:"Staggered Push-up", duration:30, session:"The 8 Minute Workout"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"The 8 Minute Workout"},
 { prep:5, name:"Superman", duration:30, session:"The 8 Minute Workout"},
 { prep:5, name:"High Knees", duration:30, session:"The 8 Minute Workout"},
-{ prep:5, name:"Chair split Squat", duration:30, session:"The 8 Minute Workout"},
-{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The 8 Minute Workout"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"The 8 Minute Workout"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"The 8 Minute Workout"},
 { prep:5, name:"Bicycle Crunch", duration:30, session:"The 8 Minute Workout"},
 { prep:5, name:"Mountain Climbers", duration:30, session:"The 8 Minute Workout"},
 { prep:5, name:"Power Squat", duration:30, session:"The 8 Minute Workout"},
@@ -664,7 +720,7 @@ let allWorkouts = [
 { prep:5, name:"Abdominal Crunch", duration:30, session:"Beginner 9 Minute Workout"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"Beginner 9 Minute Workout"},
 { prep:5, name:"Wall Sit", duration:30, session:"Beginner 9 Minute Workout"},
-{ prep:5, name:"Staggered Push-up", duration:30, session:"Beginner 9 Minute Workout"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"Beginner 9 Minute Workout"},
 { prep:5, name:"Superman", duration:30, session:"Beginner 9 Minute Workout"},
 { prep:5, name:"March in Place", duration:30, session:"First Timer"},
 { prep:5, name:"Chair-Assist Squat", duration:30, session:"First Timer"},
@@ -678,7 +734,7 @@ let allWorkouts = [
 { prep:5, name:"Reverse Lunge", duration:30, session:"First Timer"},
 { prep:5, name:"Chair-Assist Push-Up", duration:30, session:"First Timer"},
 { prep:5, name:"Swimmer", duration:30, session:"First Timer"},
-{ prep:5, name:"Jumping Jacks", duration:30, session:"The Full Workout"},
+{ prep:5, name:"First Cycle - Jumping Jacks", duration:30, session:"The Full Workout"},
 { prep:5, name:"Wall Sit", duration:30, session:"The Full Workout"},
 { prep:5, name:"Push-up", duration:30, session:"The Full Workout"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"The Full Workout"},
@@ -689,8 +745,8 @@ let allWorkouts = [
 { prep:5, name:"High Knees", duration:30, session:"The Full Workout"},
 { prep:5, name:"Lunge", duration:30, session:"The Full Workout"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"The Full Workout"},
-{ prep:5, name:"Side Plank", duration:30, session:"The Full Workout"},
-{ prep:5, name:"Jumping Jacks", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"The Full Workout"},
+{ prep:10, name:"Second Cycle - Jumping Jacks", duration:30, session:"The Full Workout"},
 { prep:5, name:"Wall Sit", duration:30, session:"The Full Workout"},
 { prep:5, name:"Push-up", duration:30, session:"The Full Workout"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"The Full Workout"},
@@ -701,8 +757,8 @@ let allWorkouts = [
 { prep:5, name:"High Knees", duration:30, session:"The Full Workout"},
 { prep:5, name:"Lunge", duration:30, session:"The Full Workout"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"The Full Workout"},
-{ prep:5, name:"Side Plank", duration:30, session:"The Full Workout"},
-{ prep:5, name:"Jumping Jacks", duration:30, session:"The Full Workout"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"The Full Workout"},
+{ prep:10, name:"Third Cycle - Jumping Jacks", duration:30, session:"The Full Workout"},
 { prep:5, name:"Wall Sit", duration:30, session:"The Full Workout"},
 { prep:5, name:"Push-up", duration:30, session:"The Full Workout"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"The Full Workout"},
@@ -713,99 +769,99 @@ let allWorkouts = [
 { prep:5, name:"High Knees", duration:30, session:"The Full Workout"},
 { prep:5, name:"Lunge", duration:30, session:"The Full Workout"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"The Full Workout"},
-{ prep:5, name:"Side Plank", duration:30, session:"The Full Workout"},
-{ prep:5, name:"High Knees", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"The Full Workout"},
+{ prep:5, name:"First Cycle - High Knees", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Squat", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Push-up", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Mountain Climbers", duration:30, session:"The 21 Minute Cardio Blast"},
-{ prep:5, name:"Side Lunge", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Triceps Dip", duration:30, session:"The 21 Minute Cardio Blast"},
-{ prep:5, name:"Side Plank", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Lunge", duration:30, session:"The 21 Minute Cardio Blast"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Superman", duration:30, session:"The 21 Minute Cardio Blast"},
-{ prep:5, name:"High Knees", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:10, name:"Second Cycle - High Knees", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Squat", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Push-up", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Mountain Climbers", duration:30, session:"The 21 Minute Cardio Blast"},
-{ prep:5, name:"Side Lunge", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Triceps Dip", duration:30, session:"The 21 Minute Cardio Blast"},
-{ prep:5, name:"Side Plank", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Lunge", duration:30, session:"The 21 Minute Cardio Blast"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Superman", duration:30, session:"The 21 Minute Cardio Blast"},
-{ prep:5, name:"High Knees", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:10, name:"Third Cycle - High Knees", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Squat", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Push-up", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Mountain Climbers", duration:30, session:"The 21 Minute Cardio Blast"},
-{ prep:5, name:"Side Lunge", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Triceps Dip", duration:30, session:"The 21 Minute Cardio Blast"},
-{ prep:5, name:"Side Plank", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Lunge", duration:30, session:"The 21 Minute Cardio Blast"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"The 21 Minute Cardio Blast"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Superman", duration:30, session:"The 21 Minute Cardio Blast"},
 { prep:5, name:"Mountain Climbers", duration:30, session:"Advanced Beginner"},
 { prep:5, name:"Power Squat", duration:30, session:"Advanced Beginner"},
 { prep:5, name:"Spiderman Push-up", duration:30, session:"Advanced Beginner"},
 { prep:5, name:"Plank", duration:30, session:"Advanced Beginner"},
 { prep:5, name:"Burpees", duration:30, session:"Advanced Beginner"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Advanced Beginner"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"Advanced Beginner"},
 { prep:5, name:"Hindu Push-Up", duration:30, session:"Advanced Beginner"},
 { prep:5, name:"Reverse Plank", duration:30, session:"Advanced Beginner"},
 { prep:5, name:"Plyo Split Squat", duration:30, session:"Advanced Beginner"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"Advanced Beginner"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"Advanced Beginner"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"Advanced Beginner"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"Advanced Beginner"},
-{ prep:5, name:"Side-to-side hop", duration:30, session:"Core Workout"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"Core Workout"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"Advanced Beginner"},
+{ prep:5, name:"First Cycle - Side-to-side hop", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"Core Workout"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"Core Workout"},
 { prep:5, name:"Bird Dog", duration:30, session:"Core Workout"},
 { prep:5, name:"Mountain Climbers", duration:30, session:"Core Workout"},
 { prep:5, name:"Lunge & Rotation", duration:30, session:"Core Workout"},
-{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"Core Workout"},
-{ prep:5, name:"One-Leg Bridge", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"Core Workout"},
+{ prep:5, name:"One-Leg Bridge -- Switch Leg", duration:32, session:"Core Workout"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"Core Workout"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Core Workout"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"Core Workout"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"Core Workout"},
-{ prep:5, name:"Side-to-side hop", duration:30, session:"Core Workout"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"Core Workout"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"Core Workout"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"Core Workout"},
+{ prep:10, name:"Second Cycle - Side-to-side hop", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"Core Workout"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"Core Workout"},
 { prep:5, name:"Bird Dog", duration:30, session:"Core Workout"},
 { prep:5, name:"Mountain Climbers", duration:30, session:"Core Workout"},
 { prep:5, name:"Lunge & Rotation", duration:30, session:"Core Workout"},
-{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"Core Workout"},
-{ prep:5, name:"One-Leg Bridge", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"Core Workout"},
+{ prep:5, name:"One-Leg Bridge -- Switch Leg", duration:32, session:"Core Workout"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"Core Workout"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Core Workout"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"Core Workout"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"Core Workout"},
-{ prep:5, name:"Side-to-side hop", duration:30, session:"Core Workout"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"Core Workout"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"Core Workout"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"Core Workout"},
+{ prep:10, name:"Third Cycle - Side-to-side hop", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"Core Workout"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"Core Workout"},
 { prep:5, name:"Bird Dog", duration:30, session:"Core Workout"},
 { prep:5, name:"Mountain Climbers", duration:30, session:"Core Workout"},
 { prep:5, name:"Lunge & Rotation", duration:30, session:"Core Workout"},
-{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"Core Workout"},
-{ prep:5, name:"One-Leg Bridge", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"Core Workout"},
+{ prep:5, name:"One-Leg Bridge -- Switch Leg", duration:32, session:"Core Workout"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"Core Workout"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Core Workout"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"Core Workout"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"Core Workout"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"Core Workout"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"Core Workout"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"Core Workout"},
 { prep:5, name:"Step-up", duration:30, session:"The Triple Triple Workout"},
 { prep:5, name:"Squat", duration:30, session:"The Triple Triple Workout"},
 { prep:5, name:"Push-up", duration:30, session:"The Triple Triple Workout"},
 { prep:5, name:"Bird Dog", duration:30, session:"The Triple Triple Workout"},
 { prep:5, name:"Jumping Jacks", duration:30, session:"The Triple Triple Workout"},
-{ prep:5, name:"Side Lunge", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"The Triple Triple Workout"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"The Triple Triple Workout"},
-{ prep:5, name:"One-Leg Bridge", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"One-Leg Bridge -- Switch Leg", duration:32, session:"The Triple Triple Workout"},
 { prep:5, name:"Mountain Climbers", duration:30, session:"The Triple Triple Workout"},
 { prep:5, name:"Power Squat", duration:30, session:"The Triple Triple Workout"},
 { prep:5, name:"Spiderman Push-up", duration:30, session:"The Triple Triple Workout"},
@@ -815,291 +871,291 @@ let allWorkouts = [
 { prep:5, name:"Triceps Dip", duration:30, session:"The Triple Triple Workout"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"The Triple Triple Workout"},
 { prep:5, name:"High Knees", duration:30, session:"The Triple Triple Workout"},
-{ prep:5, name:"Chair split Squat", duration:30, session:"The Triple Triple Workout"},
-{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"The Triple Triple Workout"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"The Triple Triple Workout"},
 { prep:5, name:"Bicycle Crunch", duration:30, session:"The Triple Triple Workout"},
 { prep:5, name:"Burpees", duration:30, session:"The Triple Triple Workout"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"The Triple Triple Workout"},
 { prep:5, name:"Hindu Push-Up", duration:30, session:"The Triple Triple Workout"},
 { prep:5, name:"Reverse Plank", duration:30, session:"The Triple Triple Workout"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"The Triple Triple Workout"},
 { prep:5, name:"Wall Sit", duration:30, session:"The Triple Triple Workout"},
-{ prep:5, name:"Staggered Push-up", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"The Triple Triple Workout"},
 { prep:5, name:"Superman", duration:30, session:"The Triple Triple Workout"},
 { prep:5, name:"Side-to-side hop", duration:30, session:"The Triple Triple Workout"},
 { prep:5, name:"Lunge & Rotation", duration:30, session:"The Triple Triple Workout"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"The Triple Triple Workout"},
-{ prep:5, name:"Side Plank", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"The Triple Triple Workout"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"The Triple Triple Workout"},
 { prep:5, name:"Plyo Split Squat", duration:30, session:"The Triple Triple Workout"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"The Triple Triple Workout"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"The Triple Triple Workout"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Triple Triple Workout"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"The Triple Triple Workout"},
-{ prep:5, name:"Mountain Climbers", duration:30, session:"The Strength Workout"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"The Triple Triple Workout"},
+{ prep:5, name:"First Cycle - Mountain Climbers", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"The Strength Workout"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Strength Workout"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"The Strength Workout"},
 { prep:5, name:"Step-up", duration:30, session:"The Strength Workout"},
 { prep:5, name:"Wall Sit", duration:30, session:"The Strength Workout"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"The Strength Workout"},
 { prep:5, name:"Reverse Plank", duration:30, session:"The Strength Workout"},
 { prep:5, name:"Jumping Jacks", duration:30, session:"The Strength Workout"},
-{ prep:5, name:"Chair split Squat", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"The Strength Workout"},
 { prep:5, name:"Hindu Push-Up", duration:30, session:"The Strength Workout"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"The Strength Workout"},
-{ prep:5, name:"Mountain Climbers", duration:30, session:"The Strength Workout"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"The Strength Workout"},
+{ prep:10, name:"Second Cycle - Mountain Climbers", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"The Strength Workout"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Strength Workout"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"The Strength Workout"},
 { prep:5, name:"Step-up", duration:30, session:"The Strength Workout"},
 { prep:5, name:"Wall Sit", duration:30, session:"The Strength Workout"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"The Strength Workout"},
 { prep:5, name:"Reverse Plank", duration:30, session:"The Strength Workout"},
 { prep:5, name:"Jumping Jacks", duration:30, session:"The Strength Workout"},
-{ prep:5, name:"Chair split Squat", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"The Strength Workout"},
 { prep:5, name:"Hindu Push-Up", duration:30, session:"The Strength Workout"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"The Strength Workout"},
-{ prep:5, name:"Mountain Climbers", duration:30, session:"The Strength Workout"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"The Strength Workout"},
+{ prep:10, name:"Third Cycle - Mountain Climbers", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"The Strength Workout"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Strength Workout"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"The Strength Workout"},
 { prep:5, name:"Step-up", duration:30, session:"The Strength Workout"},
 { prep:5, name:"Wall Sit", duration:30, session:"The Strength Workout"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"The Strength Workout"},
 { prep:5, name:"Reverse Plank", duration:30, session:"The Strength Workout"},
 { prep:5, name:"Jumping Jacks", duration:30, session:"The Strength Workout"},
-{ prep:5, name:"Chair split Squat", duration:30, session:"The Strength Workout"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"The Strength Workout"},
 { prep:5, name:"Hindu Push-Up", duration:30, session:"The Strength Workout"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"The Strength Workout"},
-{ prep:5, name:"1-2 Box & kick", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"The Strength Workout"},
+{ prep:5, name:"First Cycle - 1-2 Box & kick", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Reverse Lunge & Knee Lift", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Power Push-Up", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Reverse Crunch & Hug", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Skater", duration:30, session:"The 21 Minute Blitz"},
-{ prep:5, name:"One-Leg Squat Hops", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"One-Leg Squat Hops -- Switch Leg", duration:32, session:"The 21 Minute Blitz"},
 { prep:5, name:"Downward Dog Grasshopper", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Scissor Kicks", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Lunge, Touch & Kick", duration:30, session:"The 21 Minute Blitz"},
-{ prep:5, name:"One-Leg Deadlift", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"One-Leg Deadlift -- Switch Leg", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Diamond Push-Up", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"V Sit Twist", duration:30, session:"The 21 Minute Blitz"},
-{ prep:5, name:"1-2 Box & kick", duration:30, session:"The 21 Minute Blitz"},
+{ prep:10, name:"Second Cycle - 1-2 Box & kick", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Reverse Lunge & Knee Lift", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Power Push-Up", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Reverse Crunch & Hug", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Skater", duration:30, session:"The 21 Minute Blitz"},
-{ prep:5, name:"One-Leg Squat Hops", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"One-Leg Squat Hops -- Switch Leg", duration:32, session:"The 21 Minute Blitz"},
 { prep:5, name:"Downward Dog Grasshopper", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Scissor Kicks", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Lunge, Touch & Kick", duration:30, session:"The 21 Minute Blitz"},
-{ prep:5, name:"One-Leg Deadlift", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"One-Leg Deadlift -- Switch Leg", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Diamond Push-Up", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"V Sit Twist", duration:30, session:"The 21 Minute Blitz"},
-{ prep:5, name:"1-2 Box & kick", duration:30, session:"The 21 Minute Blitz"},
+{ prep:10, name:"Third Cycle - 1-2 Box & kick", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Reverse Lunge & Knee Lift", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Power Push-Up", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Reverse Crunch & Hug", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Skater", duration:30, session:"The 21 Minute Blitz"},
-{ prep:5, name:"One-Leg Squat Hops", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"One-Leg Squat Hops -- Switch Leg", duration:32, session:"The 21 Minute Blitz"},
 { prep:5, name:"Downward Dog Grasshopper", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Scissor Kicks", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Lunge, Touch & Kick", duration:30, session:"The 21 Minute Blitz"},
-{ prep:5, name:"One-Leg Deadlift", duration:30, session:"The 21 Minute Blitz"},
+{ prep:5, name:"One-Leg Deadlift -- Switch Leg", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"Diamond Push-Up", duration:30, session:"The 21 Minute Blitz"},
 { prep:5, name:"V Sit Twist", duration:30, session:"The 21 Minute Blitz"},
-{ prep:5, name:"Mountain Climbers", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"First Cycle - Mountain Climbers", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Power Squat", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Spiderman Push-up", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Plank", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Burpees", duration:30, session:"The Advanced 21 Minute"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"The Advanced 21 Minute"},
 { prep:5, name:"Hindu Push-Up", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Reverse Plank", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Plyo Split Squat", duration:30, session:"The Advanced 21 Minute"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"The Advanced 21 Minute"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Advanced 21 Minute"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"The Advanced 21 Minute"},
-{ prep:5, name:"Mountain Climbers", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:32, session:"The Advanced 21 Minute"},
+{ prep:10, name:"Second Cycle - Mountain Climbers", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Power Squat", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Spiderman Push-up", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Plank", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Burpees", duration:30, session:"The Advanced 21 Minute"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"The Advanced 21 Minute"},
 { prep:5, name:"Hindu Push-Up", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Reverse Plank", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Plyo Split Squat", duration:30, session:"The Advanced 21 Minute"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"The Advanced 21 Minute"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Advanced 21 Minute"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"The Advanced 21 Minute"},
-{ prep:5, name:"Mountain Climbers", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"The Advanced 21 Minute"},
+{ prep:10, name:"Third Cycle - Mountain Climbers", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Power Squat", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Spiderman Push-up", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Plank", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Burpees", duration:30, session:"The Advanced 21 Minute"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"The Advanced 21 Minute"},
 { prep:5, name:"Hindu Push-Up", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Reverse Plank", duration:30, session:"The Advanced 21 Minute"},
 { prep:5, name:"Plyo Split Squat", duration:30, session:"The Advanced 21 Minute"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"The Advanced 21 Minute"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Advanced 21 Minute"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"The Advanced 21 Minute"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"The Advanced 21 Minute"},
 { prep:5, name:"Squat Thrusts", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"One-Leg Power Squat", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"Chair Decline Push-Up", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Power Squat -- Switch Leg", duration:32, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"First Cycle - Chair Decline Push-Up", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Advanced Bird Dog", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Drop & Touch", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Long Jumps", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Bird Dog Push-Up", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"Side Plank Crunch", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Side Plank Crunch -- Switch Side", duration:33, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Lateral Drop & Touch", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"One-Leg Wall Sit", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Wall Sit - Switch Leg", duration:32, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Chair Pike Push-Up", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Windscreen Wipers", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Squat Thrusts", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"One-Leg Power Squat", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"Chair Decline Push-Up", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Power Squat -- Switch Leg", duration:32, session:"Super Advanced 21 Minute"},
+{ prep:10, name:"Second Cycle - Chair Decline Push-Up", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Advanced Bird Dog", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Drop & Touch", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Long Jumps", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Bird Dog Push-Up", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"Side Plank Crunch", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Side Plank Crunch -- Switch Side", duration:33, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Lateral Drop & Touch", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"One-Leg Wall Sit", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Wall Sit - Switch Leg", duration:32, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Chair Pike Push-Up", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Windscreen Wipers", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Squat Thrusts", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"One-Leg Power Squat", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"Chair Decline Push-Up", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Power Squat -- Switch Leg", duration:32, session:"Super Advanced 21 Minute"},
+{ prep:10, name:"Third Cycle - Chair Decline Push-Up", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Advanced Bird Dog", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Drop & Touch", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Long Jumps", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Bird Dog Push-Up", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"Side Plank Crunch", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"Side Plank Crunch -- Switch Side", duration:33, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Lateral Drop & Touch", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"One-Leg Wall Sit", duration:30, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Wall Sit - Switch Leg", duration:32, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Chair Pike Push-Up", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Windscreen Wipers", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"Burpees", duration:30, session:"The 24 Minute Power Set"},
-{ prep:5, name:"Chair split Squat", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"First Cycle - Burpees", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"The 24 Minute Power Set"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"The 24 Minute Power Set"},
 { prep:5, name:"Superman", duration:30, session:"The 24 Minute Power Set"},
 { prep:5, name:"Plyo Split Squat", duration:30, session:"The 24 Minute Power Set"},
-{ prep:5, name:"Side Lunge", duration:30, session:"The 24 Minute Power Set"},
-{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"The 24 Minute Power Set"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"The 24 Minute Power Set"},
 { prep:5, name:"Bicycle Crunch", duration:30, session:"The 24 Minute Power Set"},
 { prep:5, name:"Side-to-side hop", duration:30, session:"The 24 Minute Power Set"},
 { prep:5, name:"Power Squat", duration:30, session:"The 24 Minute Power Set"},
-{ prep:5, name:"Staggered Push-up", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"The 24 Minute Power Set"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"The 24 Minute Power Set"},
-{ prep:5, name:"Burpees", duration:30, session:"The 24 Minute Power Set"},
-{ prep:5, name:"Chair split Squat", duration:30, session:"The 24 Minute Power Set"},
+{ prep:10, name:"Second Cycle - Burpees", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"The 24 Minute Power Set"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"The 24 Minute Power Set"},
 { prep:5, name:"Superman", duration:30, session:"The 24 Minute Power Set"},
 { prep:5, name:"Plyo Split Squat", duration:30, session:"The 24 Minute Power Set"},
-{ prep:5, name:"Side Lunge", duration:30, session:"The 24 Minute Power Set"},
-{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"The 24 Minute Power Set"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"The 24 Minute Power Set"},
 { prep:5, name:"Bicycle Crunch", duration:30, session:"The 24 Minute Power Set"},
 { prep:5, name:"Side-to-side hop", duration:30, session:"The 24 Minute Power Set"},
 { prep:5, name:"Power Squat", duration:30, session:"The 24 Minute Power Set"},
-{ prep:5, name:"Staggered Push-up", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"The 24 Minute Power Set"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"The 24 Minute Power Set"},
-{ prep:5, name:"Burpees", duration:30, session:"The 24 Minute Power Set"},
-{ prep:5, name:"Chair split Squat", duration:30, session:"The 24 Minute Power Set"},
+{ prep:10, name:"Third Cycle - Burpees", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"The 24 Minute Power Set"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"The 24 Minute Power Set"},
 { prep:5, name:"Superman", duration:30, session:"The 24 Minute Power Set"},
 { prep:5, name:"Plyo Split Squat", duration:30, session:"The 24 Minute Power Set"},
-{ prep:5, name:"Side Lunge", duration:30, session:"The 24 Minute Power Set"},
-{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"The 24 Minute Power Set"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"The 24 Minute Power Set"},
 { prep:5, name:"Bicycle Crunch", duration:30, session:"The 24 Minute Power Set"},
 { prep:5, name:"Side-to-side hop", duration:30, session:"The 24 Minute Power Set"},
 { prep:5, name:"Power Squat", duration:30, session:"The 24 Minute Power Set"},
-{ prep:5, name:"Staggered Push-up", duration:30, session:"The 24 Minute Power Set"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"The 24 Minute Power Set"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"The 24 Minute Power Set"},
-{ prep:5, name:"Squat & Box", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"First Cycle - Squat & Box", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Lunge", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Triceps Dip", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Wall Sit", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"Staggered Push-up", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"Advanced Progression"},
 { prep:5, name:"Superman", duration:30, session:"Advanced Progression"},
 { prep:5, name:"High Knees", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"Chair split Squat", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"Advanced Progression"},
 { prep:5, name:"Bicycle Crunch", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Side-to-side hop", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Lunge & Rotation", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"Side Plank", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"Advanced Progression"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"Advanced Progression"},
 { prep:5, name:"Burpees", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"Advanced Progression"},
 { prep:5, name:"Hindu Push-Up", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Reverse Plank", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Plyo Split Squat", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"Advanced Progression"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"Squat & Box", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"Advanced Progression"},
+{ prep:10, name:"Second Cycle - Squat & Box", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Lunge", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Triceps Dip", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Abdominal Crunch", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Wall Sit", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"Staggered Push-up", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"Advanced Progression"},
 { prep:5, name:"Superman", duration:30, session:"Advanced Progression"},
 { prep:5, name:"High Knees", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"Chair split Squat", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"Advanced Progression"},
 { prep:5, name:"Bicycle Crunch", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Side-to-side hop", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Lunge & Rotation", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"Side Plank", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"Advanced Progression"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"Advanced Progression"},
 { prep:5, name:"Burpees", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"Advanced Progression"},
 { prep:5, name:"Hindu Push-Up", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Reverse Plank", duration:30, session:"Advanced Progression"},
 { prep:5, name:"Plyo Split Squat", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"Advanced Progression"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"Advanced Progression"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"Advanced Progression"},
-{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"Advanced Progression"},
+{ prep:5, name:"First Cycle - Side-to-side Shuffle", duration:30, session:"The Super Hero Workout"},
 { prep:5, name:"Power Squat", duration:30, session:"The Super Hero Workout"},
 { prep:5, name:"Spiderman Push-up", duration:30, session:"The Super Hero Workout"},
-{ prep:5, name:"One-Leg Bridge", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"One-Leg Bridge -- Switch Leg", duration:32, session:"The Super Hero Workout"},
 { prep:5, name:"Squat & Box", duration:30, session:"The Super Hero Workout"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"The Super Hero Workout"},
 { prep:5, name:"Hindu Push-Up", duration:30, session:"The Super Hero Workout"},
 { prep:5, name:"Bicycle Crunch", duration:30, session:"The Super Hero Workout"},
 { prep:5, name:"Side-to-side hop", duration:30, session:"The Super Hero Workout"},
-{ prep:5, name:"Chair split Squat", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"The Super Hero Workout"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Super Hero Workout"},
 { prep:5, name:"Superman", duration:30, session:"The Super Hero Workout"},
-{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"The Super Hero Workout"},
+{ prep:10, name:"Second Cycle - Side-to-side Shuffle", duration:30, session:"The Super Hero Workout"},
 { prep:5, name:"Power Squat", duration:30, session:"The Super Hero Workout"},
 { prep:5, name:"Spiderman Push-up", duration:30, session:"The Super Hero Workout"},
-{ prep:5, name:"One-Leg Bridge", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"One-Leg Bridge -- Switch Leg", duration:32, session:"The Super Hero Workout"},
 { prep:5, name:"Squat & Box", duration:30, session:"The Super Hero Workout"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"The Super Hero Workout"},
 { prep:5, name:"Hindu Push-Up", duration:30, session:"The Super Hero Workout"},
 { prep:5, name:"Bicycle Crunch", duration:30, session:"The Super Hero Workout"},
 { prep:5, name:"Side-to-side hop", duration:30, session:"The Super Hero Workout"},
-{ prep:5, name:"Chair split Squat", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"The Super Hero Workout"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Super Hero Workout"},
 { prep:5, name:"Superman", duration:30, session:"The Super Hero Workout"},
-{ prep:5, name:"Side-to-side Shuffle", duration:30, session:"The Super Hero Workout"},
+{ prep:10, name:"Third Cycle - Side-to-side Shuffle", duration:30, session:"The Super Hero Workout"},
 { prep:5, name:"Power Squat", duration:30, session:"The Super Hero Workout"},
 { prep:5, name:"Spiderman Push-up", duration:30, session:"The Super Hero Workout"},
-{ prep:5, name:"One-Leg Bridge", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"One-Leg Bridge -- Switch Leg", duration:32, session:"The Super Hero Workout"},
 { prep:5, name:"Squat & Box", duration:30, session:"The Super Hero Workout"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"The Super Hero Workout"},
 { prep:5, name:"Hindu Push-Up", duration:30, session:"The Super Hero Workout"},
 { prep:5, name:"Bicycle Crunch", duration:30, session:"The Super Hero Workout"},
 { prep:5, name:"Side-to-side hop", duration:30, session:"The Super Hero Workout"},
-{ prep:5, name:"Chair split Squat", duration:30, session:"The Super Hero Workout"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"The Super Hero Workout"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Super Hero Workout"},
 { prep:5, name:"Superman", duration:30, session:"The Super Hero Workout"},
-{ prep:5, name:"High Knees", duration:30, session:"Sport's Conditioning"},
-{ prep:5, name:"Side Lunge", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"First Cycle - High Knees", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"Sport's Conditioning"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"Sport's Conditioning"},
 { prep:5, name:"Plank", duration:30, session:"Sport's Conditioning"},
 { prep:5, name:"Burpees", duration:30, session:"Sport's Conditioning"},
@@ -1107,11 +1163,11 @@ let allWorkouts = [
 { prep:5, name:"Spiderman Push-up", duration:30, session:"Sport's Conditioning"},
 { prep:5, name:"Bicycle Crunch", duration:30, session:"Sport's Conditioning"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"Sport's Conditioning"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"Sport's Conditioning"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"Sport's Conditioning"},
-{ prep:5, name:"Side Plank", duration:30, session:"Sport's Conditioning"},
-{ prep:5, name:"High Knees", duration:30, session:"Sport's Conditioning"},
-{ prep:5, name:"Side Lunge", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"Sport's Conditioning"},
+{ prep:10, name:"Second Cycle - High Knees", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"Sport's Conditioning"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"Sport's Conditioning"},
 { prep:5, name:"Plank", duration:30, session:"Sport's Conditioning"},
 { prep:5, name:"Burpees", duration:30, session:"Sport's Conditioning"},
@@ -1119,11 +1175,11 @@ let allWorkouts = [
 { prep:5, name:"Spiderman Push-up", duration:30, session:"Sport's Conditioning"},
 { prep:5, name:"Bicycle Crunch", duration:30, session:"Sport's Conditioning"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"Sport's Conditioning"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"Sport's Conditioning"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"Sport's Conditioning"},
-{ prep:5, name:"Side Plank", duration:30, session:"Sport's Conditioning"},
-{ prep:5, name:"High Knees", duration:30, session:"Sport's Conditioning"},
-{ prep:5, name:"Side Lunge", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"Sport's Conditioning"},
+{ prep:10, name:"Third Cycle - High Knees", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"Sport's Conditioning"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"Sport's Conditioning"},
 { prep:5, name:"Plank", duration:30, session:"Sport's Conditioning"},
 { prep:5, name:"Burpees", duration:30, session:"Sport's Conditioning"},
@@ -1131,45 +1187,45 @@ let allWorkouts = [
 { prep:5, name:"Spiderman Push-up", duration:30, session:"Sport's Conditioning"},
 { prep:5, name:"Bicycle Crunch", duration:30, session:"Sport's Conditioning"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"Sport's Conditioning"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"Sport's Conditioning"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"Sport's Conditioning"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"Sport's Conditioning"},
-{ prep:5, name:"Side Plank", duration:30, session:"Sport's Conditioning"},
-{ prep:5, name:"Mountain Climbers", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"Sport's Conditioning"},
+{ prep:5, name:"First Cycle - Mountain Climbers", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"The Adventure Workout"},
 { prep:5, name:"Bird Dog", duration:30, session:"The Adventure Workout"},
 { prep:5, name:"Burpees", duration:30, session:"The Adventure Workout"},
 { prep:5, name:"Lunge & Rotation", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"The Adventure Workout"},
 { prep:5, name:"Reverse Plank", duration:30, session:"The Adventure Workout"},
 { prep:5, name:"Plyo Split Squat", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"Side Lunge", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"Staggered Push-up", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"Mountain Climbers", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"The Adventure Workout"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"The Adventure Workout"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"The Adventure Workout"},
+{ prep:10, name:"Second Cycle - Mountain Climbers", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"The Adventure Workout"},
 { prep:5, name:"Bird Dog", duration:30, session:"The Adventure Workout"},
 { prep:5, name:"Burpees", duration:30, session:"The Adventure Workout"},
 { prep:5, name:"Lunge & Rotation", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"The Adventure Workout"},
 { prep:5, name:"Reverse Plank", duration:30, session:"The Adventure Workout"},
 { prep:5, name:"Plyo Split Squat", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"Side Lunge", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"Staggered Push-up", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"Mountain Climbers", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"The Adventure Workout"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"The Adventure Workout"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"The Adventure Workout"},
+{ prep:10, name:"Third Cycle - Mountain Climbers", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"The Adventure Workout"},
 { prep:5, name:"Bird Dog", duration:30, session:"The Adventure Workout"},
 { prep:5, name:"Burpees", duration:30, session:"The Adventure Workout"},
 { prep:5, name:"Lunge & Rotation", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"The Adventure Workout"},
 { prep:5, name:"Reverse Plank", duration:30, session:"The Adventure Workout"},
 { prep:5, name:"Plyo Split Squat", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"Side Lunge", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"Staggered Push-up", duration:30, session:"The Adventure Workout"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"The Adventure Workout"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"The Adventure Workout"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"The Adventure Workout"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"The Adventure Workout"},
 { prep:5, name:"Step-up", duration:30, session:"The Variety Mix"},
 { prep:5, name:"Squat", duration:30, session:"The Variety Mix"},
 { prep:5, name:"Push-up", duration:30, session:"The Variety Mix"},
@@ -1180,35 +1236,35 @@ let allWorkouts = [
 { prep:5, name:"Abdominal Crunch", duration:30, session:"The Variety Mix"},
 { prep:5, name:"Side-to-side Shuffle", duration:30, session:"The Variety Mix"},
 { prep:5, name:"Wall Sit", duration:30, session:"The Variety Mix"},
-{ prep:5, name:"Staggered Push-up", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"The Variety Mix"},
 { prep:5, name:"Superman", duration:30, session:"The Variety Mix"},
 { prep:5, name:"Jumping Jacks", duration:30, session:"The Variety Mix"},
-{ prep:5, name:"Side Lunge", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Side Lunge -- Switch Side", duration:32, session:"The Variety Mix"},
 { prep:5, name:"Push-up & Rotation", duration:30, session:"The Variety Mix"},
-{ prep:5, name:"One-Leg Bridge", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"One-Leg Bridge -- Switch Leg", duration:32, session:"The Variety Mix"},
 { prep:5, name:"High Knees", duration:30, session:"The Variety Mix"},
-{ prep:5, name:"Chair split Squat", duration:30, session:"The Variety Mix"},
-{ prep:5, name:"One-Leg Triceps Dip", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"The Variety Mix"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"The Variety Mix"},
 { prep:5, name:"Bicycle Crunch", duration:30, session:"The Variety Mix"},
 { prep:5, name:"Side-to-side hop", duration:30, session:"The Variety Mix"},
 { prep:5, name:"Lunge & Rotation", duration:30, session:"The Variety Mix"},
-{ prep:5, name:"One-Leg push-up", duration:30, session:"The Variety Mix"},
-{ prep:5, name:"Side Plank", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"One-Leg Push-up -- Switch Leg", duration:32, session:"The Variety Mix"},
+{ prep:5, name:"Side Plank -- Switch Side", duration:33, session:"The Variety Mix"},
 { prep:5, name:"Mountain Climbers", duration:30, session:"The Variety Mix"},
 { prep:5, name:"Power Squat", duration:30, session:"The Variety Mix"},
 { prep:5, name:"Spiderman Push-up", duration:30, session:"The Variety Mix"},
 { prep:5, name:"Plank", duration:30, session:"The Variety Mix"},
 { prep:5, name:"Burpees", duration:30, session:"The Variety Mix"},
-{ prep:5, name:"One-Leg Squat Touch", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"The Variety Mix"},
 { prep:5, name:"Hindu Push-Up", duration:30, session:"The Variety Mix"},
 { prep:5, name:"Reverse Plank", duration:30, session:"The Variety Mix"},
 { prep:5, name:"Plyo Split Squat", duration:30, session:"The Variety Mix"},
-{ prep:5, name:"One-Leg Squat", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"The Variety Mix"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Variety Mix"},
-{ prep:5, name:"Full Side Plank", duration:30, session:"The Variety Mix"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"The Variety Mix"},
  // ── Test ──────────────────────────────────────
   { prep:8,  name:"Jumping Jacks",     duration:10, session:"TestA" },
-  { prep:5,  name:"Push-ups",          duration:10, session:"TestA" },
+  { prep:5,  name:"Side Plank -- Switch Side", duration:33, session:"TestA" },
   { prep:5,  name:"Squats",            duration:10, session:"TestA" },
   { prep:5,  name:"Plank",             duration:10, session:"TestA" },
 ];
@@ -1220,22 +1276,18 @@ const SESSION_ICONS = ["🔥","💪","⚡","🏃","🧘","🥊","🚀","🎯"];
 // session, so they aren't part of allWorkouts / CSV import-export.
 const SECTION_ANNOUNCE_SECS = 10; // interval used when announcing a new section: Warm-up, Core, Cool-down
 const WARMUP = [
-  { name:"Shoulder Roll Forward",  duration:15, prep:3, type:"warmup" },
-  { name:"Shoulder Roll Backward", duration:15, prep:3, type:"warmup" },
-  { name:"Arm Hugs",               duration:30, prep:3, type:"warmup" },
-  { name:"Knee Hugs",              duration:30, prep:3, type:"warmup" },
-  { name:"Torso Rotation",         duration:30, prep:3, type:"warmup" }, 
+  { name:"Shoulder Roll Forward -- Switch Backward",  duration:32, prep:3, type:"warmup" },
+  { name:"Arm Hugs",               duration:25, prep:3, type:"warmup" },
+  { name:"Knee Hugs",              duration:25, prep:3, type:"warmup" },
+  { name:"Torso Rotation",         duration:25, prep:3, type:"warmup" }, 
 ];
 const COOLDOWN = [
-  { name:"Single-leg Stretch Left",  duration:25, prep:3, type:"cooldown" },
-  { name:"Single-leg Stretch Right", duration:25, prep:3, type:"cooldown" },
-  { name:"Quadriceps Stretch Left",  duration:20, prep:3, type:"cooldown" },
-  { name:"Quadriceps Stretch Right", duration:20, prep:3, type:"cooldown" },
+  { name:"Single-leg Stretch -- Switch Side",  duration:53, prep:3, type:"cooldown" },
+  { name:"Quadriceps Stretch -- Switch leg",  duration:42, prep:3, type:"cooldown" },
   { name:"Arm Stretch Above",        duration:20, prep:3, type:"cooldown" },
   { name:"Arm Stretch Backward",     duration:20, prep:3, type:"cooldown" },
   { name:"Arm Stretch Forward",      duration:20, prep:3, type:"cooldown" },
-  { name:"Triceps Stretch Left",     duration:20, prep:3, type:"cooldown" },
-  { name:"Triceps Stretch Right",    duration:20, prep:3, type:"cooldown" },
+  { name:"Triceps Stretch -- Switch Arm",     duration:42, prep:3, type:"cooldown" },
 ];
 
 // Builds the full step list for a session given whether warm-up/cool-down
@@ -1392,25 +1444,36 @@ function getVoice() {
 function speak(text) {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "en-US";
-  u.rate = 1.0;     // natural pace
-  u.pitch = 1.25;   // bright, upbeat tone
-  u.volume = 1.0;
   const voice = getVoice();
-  if (voice) u.voice = voice;
-  window.speechSynthesis.speak(u);
+  const baseRate = 1.0;     // natural pace
+  const basePitch = 1.25;   // bright, upbeat tone
+  const baseVolume = 1.0;
+
+  // Wrap a word/phrase in **asterisks** to accentuate it — it's split out
+  // into its own utterance with a slightly slower rate and higher pitch,
+  // then queued right after the rest so it plays back-to-back.
+  const parts = text.split(/\*\*(.+?)\*\*/g).filter(p => p !== "");
+  parts.forEach((part, i) => {
+    const emphasized = i % 2 === 1;
+    const u = new SpeechSynthesisUtterance(part);
+    u.lang = "en-US";
+    if (voice) u.voice = voice;
+    u.rate = emphasized ? Math.max(0.5, baseRate * 0.85) : baseRate;
+    u.pitch = emphasized ? Math.min(2, basePitch + 0.2) : basePitch;
+    u.volume = emphasized ? 1.0 : baseVolume;
+    window.speechSynthesis.speak(u);
+  });
 }
 
 // Varied phrases for announcing next exercise
 const PREP_PHRASES = [
-  (name) => `Get ready for ${name}!`,
-  (name) => `Up next — ${name}! Let's go!`,
-  (name) => `Time for ${name}! You've got this!`,
-  (name) => `Next up, ${name}! Stay strong!`,
-  (name) => `${name} coming up! Push it!`,
-  (name) => `Alright! Get set for ${name}!`,
-  (name) => `${name}! Let's crush it!`,
+  (name) => `Get ready for **${name}**!`,
+  (name) => `Up next — **${name}**! Let's go!`,
+  (name) => `Time for **${name}**! You've got this!`,
+  (name) => `Next up, **${name}**! Stay strong!`,
+  (name) => `**${name}** coming up!`,
+  (name) => `Get set for **${name}**!`,
+  (name) => `**${name}**! Let's crush it!`,
 ];
 
 // Mid-workout random motivations (called twice per session at ~33% and ~66%)
@@ -1562,6 +1625,7 @@ function beginWorkout() {
   if (!selectedSession || !sessions[selectedSession]) return;
   // Unlock audio on iOS with a silent beep on user gesture
   try { getAudioCtx().resume(); } catch(e) {}
+  if (!wakeLock) requestWakeLock();
 
   sessionUsers = [];
   if (userJChecked) sessionUsers.push("J");
@@ -1606,6 +1670,16 @@ function sectionNameFor(idx) {
   return "Core";
 }
 
+// Splits a name like "Side Plank -- Switch Side" (dash can be "--" or "—")
+// into { main: "Side Plank", switchPart: "Switch Side" }. Only matches
+// when the part after the dash starts with "switch" — returns null for
+// ordinary names (including plain "Switch to other leg", which has no
+// dash and is handled separately as its own case).
+function parseSwitchName(name) {
+  const m = name.match(/^(.*?)\s*(?:--|—)\s*(switch.*)$/i);
+  return m ? { main: m[1].trim(), switchPart: m[2].trim() } : null;
+}
+
 function startPhase(idx, ph) {
   currentIdx = idx;
   phase = ph;
@@ -1627,17 +1701,24 @@ function startPhase(idx, ph) {
   // a plain, consistent "Next up" announcement, and motivational
   // variation is reserved for the core session.
   if (ph === "prep") {
-    if (isSectionStart(idx, mainStartIdx, mainEndIdx)) {
+    const switchInfo = parseSwitchName(w.name);
+    const spokenName = switchInfo ? switchInfo.main : w.name;
+
+    if (/^switch/i.test(w.name)) {
+      // "Switch ..." exercises are quick mid-set transitions — just say
+      // the name, no "Get ready for"/"Next up"/motivational wrapping.
+      speak(w.name);
+    } else if (isSectionStart(idx, mainStartIdx, mainEndIdx)) {
       const sectionName = sectionNameFor(idx);
       if (idx === 0) {
-        speak(`Get ready for ${selectedSession}. ${sectionName}: ${w.name}`);
+        speak(`Get ready and set your watch for ${selectedSession}. ${sectionName}: **${spokenName}**`);
       } else {
-        speak(`Get ready for ${sectionName}: ${w.name}`);
+        speak(`Get ready and set your watch for ${sectionName}: **${spokenName}**`);
       }
     } else if (isBookend(idx)) {
-      speak(`Next up, ${w.name}`);
+      speak(`Next up, **${spokenName}**`);
     } else {
-      speak(pickPhrase(PREP_PHRASES)(w.name));
+      speak(pickPhrase(PREP_PHRASES)(spokenName));
     }
   }
 
@@ -1649,8 +1730,10 @@ function tick() {
   if (!running) return;
   seconds--;
 
+  const w = currentWorkouts[currentIdx];
   const bookend = isBookend(currentIdx);
   const sectionStartPrep = phase === "prep" && isSectionStart(currentIdx, mainStartIdx, mainEndIdx);
+  const isSwitchEx = w && /^switch/i.test(w.name);
 
   // Mid-workout motivations only apply to the core session
   if (!bookend) checkMidMotivation();
@@ -1659,8 +1742,9 @@ function tick() {
   // session and for section-start announcements (Warm-up/Core/Cool-down)
   // — during ordinary warm-up/cool-down reps the numbers would talk over
   // the "Next up" announcement, so we stay silent there and just say
-  // "Go" once work starts instead (see advance()).
-  if (seconds <= 3 && seconds > 0) {
+  // "Go" once work starts instead (see advance()). "Switch..." exercises
+  // skip the countdown entirely — no beeps, no numbers, just "Go!".
+  if (seconds <= 3 && seconds > 0 && !(phase === "prep" && isSwitchEx)) {
     playCountdownBeep(seconds);
     if (!bookend || sectionStartPrep) {
       if (seconds === 3) speak("Three");
@@ -1671,6 +1755,15 @@ function tick() {
 
   updateCircle();
 
+  // For "Main -- Switch Side"-style exercises, announce the second half
+  // at the halfway point of the exercise, minus 1 second — so it scales
+  // with however long that exercise runs.
+  const switchTarget = Math.max(0, Math.floor(totalSeconds / 2) - 1);
+  if (phase === "work" && totalSeconds - seconds === switchTarget) {
+    const switchInfo = w && parseSwitchName(w.name);
+    if (switchInfo) speak(switchInfo.switchPart);
+  }
+
   if (seconds <= 0) {
     clearInterval(timerInterval);
     advance();
@@ -1679,7 +1772,9 @@ function tick() {
 
 function advance() {
   if (phase === "prep") {
-    playStartBeep();
+    const w = currentWorkouts[currentIdx];
+    const isSwitchEx = w && /^switch/i.test(w.name);
+    if (!isSwitchEx) playStartBeep();
     speak("Go!");
     startPhase(currentIdx, "work");
   } else {
@@ -1696,7 +1791,7 @@ function finishWorkout() {
   phase = "done";
   running = false;
   clearInterval(timerInterval);
-  speak("Workout complete! You absolutely crushed it! Amazing work!");
+  speak("Workout complete! You absolutely crushed it! Amazing work! Don't forget to switch of your watch!");
   playBeep(523, 0.1); setTimeout(() => playBeep(659, 0.1), 120); setTimeout(() => playBeep(784, 0.3), 240);
   document.getElementById("timer-screen").style.display = "none";
   document.getElementById("done-screen").style.display = "block";
@@ -1735,7 +1830,7 @@ function renderEvalUI(users) {
       <div class="eval-label">${users.length > 1 ? `🧑 ${u} — ` : ""}HOW HEAVY DID THAT FEEL?</div>
       <div class="eval-scale-labels"><span>LIGHT</span><span>HEAVY</span></div>
       <div class="sweat-row">
-        ${[1,2,3,4,5].map(v => `<span class="sweat" data-user="${u}" data-v="${v}">🥵</span>`).join("")}
+        ${[1,2,3,4,5].map(v => `<span class="sweat" data-user="${u}" data-v="${v}">${FACE_SCALE[v-1]}</span>`).join("")}
       </div>
       <button class="btn-save-eval" data-user="${u}">SAVE RATING</button>
       <div class="eval-saved" id="eval-saved-${u}" style="display:none">✓ Saved — nice work!</div>
@@ -1752,7 +1847,7 @@ document.getElementById("eval-container").addEventListener("click", e => {
     const rating = parseInt(sweat.dataset.v);
     currentRatings[user] = rating;
     document.querySelectorAll(`.sweat[data-user="${user}"]`).forEach(s => {
-      s.classList.toggle("filled", parseInt(s.dataset.v) <= rating);
+      s.classList.toggle("filled", parseInt(s.dataset.v) === rating);
     });
     return;
   }
@@ -2078,43 +2173,68 @@ function switchStatsUser(user) {
   document.querySelectorAll(".stats-user-btn").forEach(b => {
     b.classList.toggle("active", b.dataset.user === user);
   });
+  document.querySelectorAll(".stats-panel").forEach(p => {
+    p.classList.toggle("active", p.dataset.user === user);
+  });
   updateStatsDisplay();
 }
 
+function historyForUser(user) {
+  return workoutHistory.filter(h => h.user === user);
+}
+
 function historyForStatsUser() {
-  return workoutHistory.filter(h => h.user === statsUser);
+  return historyForUser(statsUser);
 }
 
 function updateStatsDisplay() {
-  const userHistory = historyForStatsUser();
-  document.getElementById("stat-total").textContent = userHistory.length;
-  const totalSecs = userHistory.reduce((a, h) => a + (h.duration || 0), 0);
-  document.getElementById("stat-time").textContent = formatDuration(totalSecs);
-  document.getElementById("stat-streak").textContent = calcWeekStreak(userHistory) + "🔥";
-  renderWorkloadChart();
+  // Always refresh both people's panels — on iPad-width screens both are
+  // visible side by side at once, and on phones this is cheap enough to
+  // just always do regardless of which one is currently active.
+  ["J", "T"].forEach(user => {
+    const userHistory = historyForUser(user);
+    document.getElementById(`stat-total-${user}`).textContent = userHistory.length;
+    const totalSecs = userHistory.reduce((a, h) => a + (h.duration || 0), 0);
+    document.getElementById(`stat-time-${user}`).textContent = formatDuration(totalSecs);
+    document.getElementById(`stat-streak-${user}`).textContent = calcWeekStreak(userHistory) + "🔥";
+    renderWorkloadChart(user);
+    renderWeeklyMinutesChart(user);
+  });
 }
 
 // ─── WORKLOAD TREND CHART (SVG bar chart of ratings, 1=light..5=heavy) ──
+// Graduated face scale for the 1-5 "how heavy did that feel" rating —
+// shared between the rating buttons on the done screen and the
+// workload trend chart's y-axis.
+const FACE_SCALE = ["😌", "🙂", "😅", "😓", "🥵"];
+
 function ratingColor(r) {
   // green (light) -> yellow -> orange -> red (heavy)
   return ["#10B981", "#84CC16", "#F59E0B", "#F97316", "#DC2626"][r - 1] || "#D1D5DB";
 }
 
-function renderWorkloadChart() {
-  const container = document.getElementById("workload-chart");
-  const rated = historyForStatsUser().filter(h => h.rating).slice(-14); // most recent 14 rated sessions for this person
+function renderWorkloadChart(user) {
+  const container = document.getElementById(`workload-chart-${user}`);
+  const rated = historyForUser(user).filter(h => h.rating).slice(-14); // most recent 14 rated sessions for this person
   if (!rated.length) {
-    container.innerHTML = `<div class="chart-empty">${statsUser} hasn't rated a workout yet — ratings will start showing the workload trend here.</div>`;
+    container.innerHTML = `<div class="chart-empty">${user} hasn't rated a workout yet — ratings will start showing the workload trend here.</div>`;
     return;
   }
 
   const W = 320, H = 130;
-  const padL = 8, padR = 8, padTop = 22, padBottom = 22;
+  const padL = 22, padR = 8, padTop = 22, padBottom = 22;
   const chartW = W - padL - padR;
   const chartH = H - padTop - padBottom;
   const n = rated.length;
   const gap = 6;
   const barW = Math.max(10, (chartW - gap * (n - 1)) / n);
+
+  // Y-axis: one face per rating level (1 = 😌 at the bottom, 5 = 🥵 at the top)
+  let yAxis = "";
+  for (let v = 1; v <= 5; v++) {
+    const gy = padTop + chartH - (v / 5) * chartH;
+    yAxis += `<text x="${(padL - 6).toFixed(1)}" y="${(gy + 4).toFixed(1)}" text-anchor="end" class="chart-y-emoji">${FACE_SCALE[v - 1]}</text>`;
+  }
 
   // Points are placed by their center x (same spacing as bars used), y by rating height
   const points = rated.map((h, i) => {
@@ -2129,7 +2249,7 @@ function renderWorkloadChart() {
   points.forEach((p) => {
     const h = p.h;
     const d = new Date(h.date);
-    const label = `${d.getMonth() + 1}/${d.getDate()}`;
+    const label = `${d.getDate()}/${d.getMonth() + 1}`;
     dots += `
       <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="5" fill="${ratingColor(h.rating)}" />
       <text x="${p.x.toFixed(1)}" y="${(p.y - 10).toFixed(1)}" text-anchor="middle" class="chart-bar-value">${h.rating}</text>
@@ -2139,9 +2259,90 @@ function renderWorkloadChart() {
 
   container.innerHTML = `
     <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block;">
+      ${yAxis}
       <line x1="${padL}" y1="${padTop + chartH}" x2="${W - padR}" y2="${padTop + chartH}" stroke="var(--border)" stroke-width="1" />
       <polyline points="${polylinePoints}" fill="none" stroke="var(--green)" stroke-width="2" />
       ${dots}
+    </svg>
+  `;
+}
+
+// ─── WEEKLY MINUTES CHART (bar per Monday-start week) ─────────────
+// Returns midnight-Monday of the week containing date `d`.
+function startOfWeekMonday(d) {
+  const date = new Date(d);
+  date.setHours(0, 0, 0, 0);
+  const day = date.getDay(); // 0=Sun, 1=Mon, ... 6=Sat
+  const diff = (day === 0 ? -6 : 1) - day; // shift back to Monday
+  date.setDate(date.getDate() + diff);
+  return date;
+}
+
+function renderWeeklyMinutesChart(user) {
+  const container = document.getElementById(`weekly-chart-${user}`);
+  const userHistory = historyForUser(user);
+  if (!userHistory.length) {
+    container.innerHTML = `<div class="chart-empty">No sessions yet for ${user} — weekly totals will show up here.</div>`;
+    return;
+  }
+
+  // Group sessions into Monday-start weeks, summing minutes and counting
+  // sessions per week.
+  const weeks = new Map(); // key: week-start date string -> { weekStart, minutes, sessions }
+  userHistory.forEach(h => {
+    const weekStart = startOfWeekMonday(h.date);
+    const key = weekStart.toISOString().slice(0, 10);
+    if (!weeks.has(key)) weeks.set(key, { weekStart, minutes: 0, sessions: 0 });
+    const entry = weeks.get(key);
+    entry.minutes += (h.duration || 0) / 60;
+    entry.sessions += 1;
+  });
+
+  const sorted = Array.from(weeks.values()).sort((a, b) => a.weekStart - b.weekStart);
+  const recent = sorted.slice(-8); // most recent 8 weeks for this person
+
+  const W = 320, H = 150;
+  const padL = 26, padR = 8, padTop = 26, padBottom = 22;
+  const chartW = W - padL - padR;
+  const chartH = H - padTop - padBottom;
+  const n = recent.length;
+  const gap = 10;
+  const barW = Math.max(14, (chartW - gap * (n - 1)) / n);
+  const maxMinutes = Math.max(...recent.map(w => w.minutes), 1);
+
+  // Round the axis top up to the next 10-minute step so gridlines land on
+  // clean values (10, 20, 30…) and bars scale against that same top.
+  const GRID_STEP = 10;
+  const axisMax = Math.max(GRID_STEP, Math.ceil(maxMinutes / GRID_STEP) * GRID_STEP);
+
+  let grid = "";
+  for (let v = GRID_STEP; v <= axisMax; v += GRID_STEP) {
+    const gy = padTop + chartH - (v / axisMax) * chartH;
+    grid += `
+      <line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W - padR}" y2="${gy.toFixed(1)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="2,3" />
+      <text x="${(padL - 6).toFixed(1)}" y="${(gy + 3).toFixed(1)}" text-anchor="end" class="chart-bar-label">${v}</text>
+    `;
+  }
+
+  let bars = "";
+  recent.forEach((w, i) => {
+    const x = padL + i * (barW + gap);
+    const barH = Math.max(2, (w.minutes / axisMax) * chartH);
+    const y = padTop + chartH - barH;
+    const cx = x + barW / 2;
+    const label = `${w.weekStart.getDate()}/${w.weekStart.getMonth() + 1}`;
+    bars += `
+      <text x="${cx.toFixed(1)}" y="${(y - 8).toFixed(1)}" text-anchor="middle" class="chart-bar-value">${w.sessions}</text>
+      <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="4" fill="var(--green)" />
+      <text x="${cx.toFixed(1)}" y="${(H - 6).toFixed(1)}" text-anchor="middle" class="chart-bar-label">${label}</text>
+    `;
+  });
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block;">
+      ${grid}
+      <line x1="${padL}" y1="${padTop + chartH}" x2="${W - padR}" y2="${padTop + chartH}" stroke="var(--border)" stroke-width="1" />
+      ${bars}
     </svg>
   `;
 }
@@ -2234,6 +2435,15 @@ document.getElementById("chk-user-j").checked = userJChecked;
 document.getElementById("chk-user-t").checked = userTChecked;
 showSessions();
 updateStatsDisplay();
+
+// Keep the screen awake by default. Safari may require a user gesture
+// before it grants this, so we also retry on the first tap anywhere on
+// the page (harmless no-op once the lock is already held).
+requestWakeLock();
+document.addEventListener("click", function retryWakeLockOnce() {
+  if (!wakeLock) requestWakeLock();
+  document.removeEventListener("click", retryWakeLockOnce);
+}, { once: true });
 </script>
 </body>
 </html>
