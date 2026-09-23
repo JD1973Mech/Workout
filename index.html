@@ -206,6 +206,19 @@
   .list-meta { color:var(--muted); font-size:11px; margin-top:2px; }
   .list-dur { background:var(--green-light); border:1px solid #A7F3D0; color:var(--green); border-radius:8px; padding:4px 10px; font-size:13px; font-weight:700; }
 
+  .list-session-header {
+    display:flex; align-items:center; gap:10px; cursor:pointer;
+    background:var(--card); border:1.5px solid var(--border);
+    border-radius:14px; padding:12px 18px; box-shadow:var(--shadow);
+    color:var(--text); font-weight:800; font-size:14px;
+    letter-spacing:0.5px; user-select:none;
+  }
+  .list-session-header .chevron { transition:transform 0.15s; color:var(--muted); font-size:12px; }
+  .list-session-header.expanded .chevron { transform:rotate(90deg); }
+  .list-session-count { margin-left:auto; color:var(--muted); font-weight:600; font-size:12px; }
+  .list-session-group { display:none; flex-direction:column; gap:10px; }
+  .list-session-group.expanded { display:flex; }
+
   /* Error */
   .error-banner {
     margin:12px 24px 0; background:#FEF2F2;
@@ -1007,7 +1020,7 @@ let allWorkouts = [
 { prep:5, name:"Bird Dog Push-Up", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Side Plank Crunch -- Switch Side", duration:33, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Lateral Drop & Touch", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"One-Leg Wall Sit - Switch Leg", duration:32, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Wall Sit -- Switch Leg", duration:32, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Chair Pike Push-Up", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Windscreen Wipers", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Squat Thrusts", duration:30, session:"Super Advanced 21 Minute"},
@@ -1019,7 +1032,7 @@ let allWorkouts = [
 { prep:5, name:"Bird Dog Push-Up", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Side Plank Crunch -- Switch Side", duration:33, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Lateral Drop & Touch", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"One-Leg Wall Sit - Switch Leg", duration:32, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Wall Sit -- Switch Leg", duration:32, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Chair Pike Push-Up", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Windscreen Wipers", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Squat Thrusts", duration:30, session:"Super Advanced 21 Minute"},
@@ -1031,7 +1044,7 @@ let allWorkouts = [
 { prep:5, name:"Bird Dog Push-Up", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Side Plank Crunch -- Switch Side", duration:33, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Lateral Drop & Touch", duration:30, session:"Super Advanced 21 Minute"},
-{ prep:5, name:"One-Leg Wall Sit - Switch Leg", duration:32, session:"Super Advanced 21 Minute"},
+{ prep:5, name:"One-Leg Wall Sit -- Switch Leg", duration:32, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Chair Pike Push-Up", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"Windscreen Wipers", duration:30, session:"Super Advanced 21 Minute"},
 { prep:5, name:"First Cycle - Burpees", duration:30, session:"The 24 Minute Power Set"},
@@ -1680,6 +1693,15 @@ function parseSwitchName(name) {
   return m ? { main: m[1].trim(), switchPart: m[2].trim() } : null;
 }
 
+// Shortens "Side Plank -- Switch Side" to just "Side Plank" for every
+// on-screen display of an exercise name (timer, next-up preview, list
+// tab). The full name is still used for CSV import/export and for the
+// separate mid-exercise spoken announcement (see parseSwitchName above).
+function displayName(name) {
+  const s = parseSwitchName(name);
+  return s ? s.main : name;
+}
+
 function startPhase(idx, ph) {
   currentIdx = idx;
   phase = ph;
@@ -1713,7 +1735,7 @@ function startPhase(idx, ph) {
       if (idx === 0) {
         speak(`Get ready and set your watch for ${selectedSession}. ${sectionName}: **${spokenName}**`);
       } else {
-        speak(`Get ready and set your watch for ${sectionName}: **${spokenName}**`);
+        speak(`Get ready for ${sectionName}: **${spokenName}**`);
       }
     } else if (isBookend(idx)) {
       speak(`Next up, **${spokenName}**`);
@@ -1935,7 +1957,7 @@ function updateExerciseInfo() {
     posText = `${currentIdx - mainStartIdx + 1} / ${mainCount}`;
   }
   document.getElementById("ex-count").textContent = `${posText} — ${blockLabel}`;
-  document.getElementById("ex-name").textContent = w.name;
+  document.getElementById("ex-name").textContent = displayName(w.name);
   const sub = document.getElementById("ex-sub");
   if (phase === "prep") {
     sub.textContent = "Get ready…";
@@ -1952,7 +1974,7 @@ function updateNextUp() {
   const next = currentWorkouts[currentIdx + 1];
   if (next) {
     nextEl.style.display = "flex";
-    document.getElementById("next-name").textContent = next.name;
+    document.getElementById("next-name").textContent = displayName(next.name);
     document.getElementById("next-dur").textContent = next.duration + "s";
   } else {
     nextEl.style.display = "none";
@@ -1977,23 +1999,32 @@ function updateProgressBar() {
 }
 
 // ─── LIST VIEW ───────────────────────────────────────────────────
-function renderStaticBlock(container, items, headerText) {
-  const hdr = document.createElement("div");
-  hdr.style.cssText = "color:var(--muted);font-size:11px;font-weight:700;letter-spacing:3px;margin-top:8px;";
-  hdr.textContent = headerText;
-  container.appendChild(hdr);
+function renderStaticBlock(container, items, headerText, autoExpand) {
+  const header = document.createElement("div");
+  header.className = "list-session-header" + (autoExpand ? " expanded" : "");
+  header.innerHTML = `<span class="chevron">▶</span><span>${headerText}</span><span class="list-session-count">${items.length} exercises</span>`;
+  container.appendChild(header);
+
+  const group = document.createElement("div");
+  group.className = "list-session-group" + (autoExpand ? " expanded" : "");
+  container.appendChild(group);
+  header.onclick = () => {
+    header.classList.toggle("expanded");
+    group.classList.toggle("expanded");
+  };
+
   items.forEach((w, i) => {
     const item = document.createElement("div");
     item.className = "list-item";
     item.innerHTML = `
       <div class="list-num">${i + 1}</div>
       <div>
-        <div class="list-name">${w.name}</div>
+        <div class="list-name">${displayName(w.name)}</div>
         <div class="list-meta">Prep: ${w.prep}s</div>
       </div>
       <div class="list-dur">${w.duration}s</div>
     `;
-    container.appendChild(item);
+    group.appendChild(item);
   });
 }
 
@@ -2002,20 +2033,46 @@ function renderList() {
   container.innerHTML = "";
   container.style.cssText = "display:flex;flex-direction:column;gap:10px;width:100%;";
 
-  renderStaticBlock(container, WARMUP, "🔥 WARM-UP · EVERY SESSION");
+  const warmupRunning = phase !== "idle" && phase !== "done" && currentIdx < mainStartIdx;
+  const cooldownRunning = phase !== "idle" && phase !== "done" && currentIdx >= mainEndIdx;
+
+  renderStaticBlock(container, WARMUP, "🔥 WARM-UP · EVERY SESSION", warmupRunning);
 
   let lastSession = null;
   let sessionNum = 0;
+  let group = null;        // the currently-open <div> of exercise items for this session
+  let countEl = null;      // that session's "N exercises" badge, updated as we go
+  let sessionExerciseCount = 0;
   allWorkouts.forEach((w) => {
     if (w.session !== lastSession) {
       lastSession = w.session;
       sessionNum = 0;
-      const hdr = document.createElement("div");
-      hdr.style.cssText = "color:var(--muted);font-size:11px;font-weight:700;letter-spacing:3px;margin-top:8px;";
-      hdr.textContent = (w.session || "ALGEMEEN").toUpperCase();
-      container.appendChild(hdr);
+
+      // Auto-expand only the session currently mid-workout, so progress
+      // highlighting stays visible; every other session starts collapsed.
+      const isRunningThisSession = phase !== "idle" && phase !== "done" && selectedSession === w.session;
+
+      const header = document.createElement("div");
+      header.className = "list-session-header" + (isRunningThisSession ? " expanded" : "");
+      header.innerHTML = `<span class="chevron">▶</span><span>${(w.session || "ALGEMEEN").toUpperCase()}</span><span class="list-session-count"></span>`;
+      container.appendChild(header);
+      countEl = header.querySelector(".list-session-count");
+
+      const sessionGroup = document.createElement("div"); // fresh binding per session, for the closure below
+      sessionGroup.className = "list-session-group" + (isRunningThisSession ? " expanded" : "");
+      container.appendChild(sessionGroup);
+      header.onclick = () => {
+        header.classList.toggle("expanded");
+        sessionGroup.classList.toggle("expanded");
+      };
+
+      group = sessionGroup; // shared mutable reference used below to append this session's items
+      sessionExerciseCount = 0;
     }
     sessionNum++;
+    sessionExerciseCount++;
+    countEl.textContent = sessionExerciseCount + " exercises";
+
     const runIdx = currentWorkouts.indexOf(w);
     const isActive = phase !== "idle" && phase !== "done" &&
       selectedSession === w.session && runIdx !== -1 && runIdx === currentIdx;
@@ -2029,15 +2086,15 @@ function renderList() {
     item.innerHTML = `
       <div class="${numClass}">${numContent}</div>
       <div>
-        <div class="list-name">${w.name}</div>
+        <div class="list-name">${displayName(w.name)}</div>
         <div class="list-meta">Prep: ${w.prep}s</div>
       </div>
       <div class="list-dur">${w.duration}s</div>
     `;
-    container.appendChild(item);
+    group.appendChild(item);
   });
 
-  renderStaticBlock(container, COOLDOWN, "🧊 COOL-DOWN · EVERY SESSION");
+  renderStaticBlock(container, COOLDOWN, "🧊 COOL-DOWN · EVERY SESSION", cooldownRunning);
 }
 
 // ─── TABS ────────────────────────────────────────────────────────
