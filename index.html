@@ -293,6 +293,12 @@
   .chart-empty { font-size:13px; color:var(--muted); text-align:center; padding:20px 10px; }
   .chart-bar-label { font-size:9px; fill:var(--muted); font-family:var(--font-ui); }
   .chart-y-emoji { font-size:11px; }
+  .pie-wrap { display:flex; align-items:center; gap:16px; }
+  .pie-legend { display:flex; flex-direction:column; gap:6px; flex:1; min-width:0; }
+  .pie-legend-row { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text); }
+  .pie-legend-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+  .pie-legend-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pie-legend-count { color:var(--muted); font-weight:700; font-size:11px; }
   .chart-bar-value { font-size:10px; font-weight:700; fill:var(--text2); font-family:var(--font-ui); }
 
   /* EVALUATION (sweat-emoji workload rating on done screen) */
@@ -489,6 +495,11 @@
           <div class="chart-title">WEEKLY MINUTES (number above bar = sessions that week)</div>
           <div id="weekly-chart-J"></div>
         </div>
+
+        <div class="chart-card">
+          <div class="chart-title">SESSIONS DONE (how many times each)</div>
+          <div id="session-pie-J"></div>
+        </div>
       </div>
 
       <div class="stats-panel" id="stats-panel-T" data-user="T">
@@ -516,6 +527,11 @@
         <div class="chart-card">
           <div class="chart-title">WEEKLY MINUTES (number above bar = sessions that week)</div>
           <div id="weekly-chart-T"></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">SESSIONS DONE (how many times each)</div>
+          <div id="session-pie-T"></div>
         </div>
       </div>
     </div>
@@ -2256,6 +2272,7 @@ function updateStatsDisplay() {
     document.getElementById(`stat-streak-${user}`).textContent = calcWeekStreak(userHistory) + "🔥";
     renderWorkloadChart(user);
     renderWeeklyMinutesChart(user);
+    renderSessionPieChart(user);
   });
 }
 
@@ -2401,6 +2418,66 @@ function renderWeeklyMinutesChart(user) {
       <line x1="${padL}" y1="${padTop + chartH}" x2="${W - padR}" y2="${padTop + chartH}" stroke="var(--border)" stroke-width="1" />
       ${bars}
     </svg>
+  `;
+}
+
+// ─── SESSION FREQUENCY CHART (donut: how many times each session was done) ──
+// A fixed color palette, cycled through if someone's tried more distinct
+// sessions than there are colors.
+const PIE_COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#14B8A6", "#F97316"];
+
+function renderSessionPieChart(user) {
+  const container = document.getElementById(`session-pie-${user}`);
+  const userHistory = historyForUser(user);
+  if (!userHistory.length) {
+    container.innerHTML = `<div class="chart-empty">No sessions yet for ${user} — this will show which sessions you do most.</div>`;
+    return;
+  }
+
+  // Count how many times each session name appears, then sort most-done first.
+  const counts = new Map();
+  userHistory.forEach(h => counts.set(h.session, (counts.get(h.session) || 0) + 1));
+  const rows = Array.from(counts.entries())
+    .map(([session, count]) => ({ session, count }))
+    .sort((a, b) => b.count - a.count);
+
+  const total = rows.reduce((a, r) => a + r.count, 0);
+
+  // Donut chart drawn as one circle per slice, using stroke-dasharray to
+  // show only that slice's share of the circumference — no SVG arc-path
+  // math needed. -90deg start rotation makes the first slice begin at
+  // the top instead of the 3 o'clock position.
+  const SIZE = 140, R = 52, CX = SIZE / 2, CY = SIZE / 2;
+  const circumference = 2 * Math.PI * R;
+  let offset = 0;
+  let slices = "";
+  rows.forEach((r, i) => {
+    const share = r.count / total;
+    const segLen = share * circumference;
+    const color = PIE_COLORS[i % PIE_COLORS.length];
+    slices += `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${color}" stroke-width="22"
+      stroke-dasharray="${segLen.toFixed(2)} ${(circumference - segLen).toFixed(2)}"
+      stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 ${CX} ${CY})" />`;
+    offset += segLen;
+  });
+
+  const legend = rows.map((r, i) => `
+    <div class="pie-legend-row">
+      <span class="pie-legend-dot" style="background:${PIE_COLORS[i % PIE_COLORS.length]}"></span>
+      <span class="pie-legend-name">${r.session}</span>
+      <span class="pie-legend-count">${r.count}×</span>
+    </div>
+  `).join("");
+
+  container.innerHTML = `
+    <div class="pie-wrap">
+      <svg viewBox="0 0 ${SIZE} ${SIZE}" style="width:${SIZE}px; height:${SIZE}px; flex-shrink:0;">
+        ${slices}
+        <text x="${CX}" y="${CY - 4}" text-anchor="middle" class="chart-bar-value" style="font-size:16px;">${total}</text>
+        <text x="${CX}" y="${CY + 12}" text-anchor="middle" class="chart-bar-label">total</text>
+      </svg>
+      <div class="pie-legend">${legend}</div>
+    </div>
   `;
 }
 
