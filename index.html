@@ -232,6 +232,24 @@
 
   /* STATS tab */
   .stats-screen { width:100%; max-width:520px; padding:20px 24px 0; display:flex; flex-direction:column; gap:16px; }
+
+  .exercises-screen { width:100%; max-width:680px; padding:20px 24px 24px; display:flex; flex-direction:column; gap:12px; margin:0 auto; }
+  .exercise-search {
+    width:100%; padding:12px 16px; font-size:15px; border:1.5px solid var(--border);
+    border-radius:12px; background:var(--card); color:var(--text); font-family:var(--font-ui);
+  }
+  .exercise-card {
+    display:flex; gap:12px; align-items:flex-start; background:var(--card);
+    border:1.5px solid var(--border); border-radius:14px; padding:14px 16px; box-shadow:var(--shadow);
+  }
+  .exercise-icon { font-size:26px; line-height:1; flex-shrink:0; margin-top:2px; }
+  .exercise-body { flex:1; min-width:0; }
+  .exercise-name { font-weight:800; font-size:15px; color:var(--text); margin-bottom:3px; }
+  .exercise-desc { font-size:13px; color:var(--text2); line-height:1.4; }
+  .exercise-link { display:inline-block; margin-top:6px; font-size:12px; font-weight:700; color:var(--green); text-decoration:none; }
+  .exercise-link:active { opacity:0.7; }
+  .exercise-empty { text-align:center; color:var(--muted); font-size:13px; padding:30px 0; }
+
   .stats-grid { display:flex; gap:10px; width:100%; }
   .stat-card {
     flex:1; background:var(--card); border:1.5px solid var(--border);
@@ -359,6 +377,7 @@
   <button class="tab active" onclick="switchTab('timer')" id="tab-timer">⏱ TIMER</button>
   <button class="tab" onclick="switchTab('list')" id="tab-list">📋 LIST</button>
   <button class="tab" onclick="switchTab('stats')" id="tab-stats">📊 STATS</button>
+  <button class="tab" onclick="switchTab('exercises')" id="tab-exercises">📖 EXERCISES</button>
 </div>
 
 <!-- ========== TIMER TAB ========== -->
@@ -371,7 +390,7 @@
     <div class="bookend-toggles" id="user-toggles">
       <label class="bookend-toggle">
         <input type="checkbox" id="chk-user-j" checked onchange="onUserToggleChange('j')">
-        <span>🧑 J</span>
+        <span>👨 J</span>
       </label>
       <label class="bookend-toggle">
         <input type="checkbox" id="chk-user-t" checked onchange="onUserToggleChange('t')">
@@ -464,13 +483,13 @@
 <div id="view-stats" style="display:none">
   <div class="stats-screen">
     <div class="stats-user-toggle" id="stats-user-toggle">
-      <button class="stats-user-btn active" data-user="J" onclick="switchStatsUser('J')">🧑 J</button>
+      <button class="stats-user-btn active" data-user="J" onclick="switchStatsUser('J')">👨 J</button>
       <button class="stats-user-btn" data-user="T" onclick="switchStatsUser('T')">🧑 T</button>
     </div>
 
     <div class="stats-columns">
       <div class="stats-panel active" id="stats-panel-J" data-user="J">
-        <div class="stats-panel-title">🧑 J</div>
+        <div class="stats-panel-title">👨 J</div>
         <div class="stats-grid">
           <div class="stat-card">
             <div class="stat-value" id="stat-total-J">0</div>
@@ -548,6 +567,13 @@
       <input type="file" id="history-csv-file" accept=".csv" style="display:none" onchange="handleHistoryCSV(event)">
       <button class="btn-reset-history" onclick="resetHistory()">🗑 Clear History (both)</button>
     </div>
+  </div>
+</div>
+
+<div id="view-exercises" style="display:none">
+  <div class="exercises-screen">
+    <input type="text" id="exercise-search" class="exercise-search" placeholder="🔎 Search exercises…" oninput="renderExerciseGuide()">
+    <div id="exercise-list"></div>
   </div>
 </div>
 
@@ -1291,6 +1317,20 @@ let allWorkouts = [
 { prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"The Variety Mix"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"The Variety Mix"},
 { prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"The Variety Mix"},
+ // ── Short Cycle ──────────────────────────────────────
+  { prep:5, name:"Push-up",            duration:30, session:"Short Cycle" },
+  { prep:5, name:"Abdominal Crunch",   duration:30, session:"Short Cycle" },
+  { prep:5, name:"One-Leg Bridge -- Switch Leg",     duration:32, session:"Short Cycle" },
+  { prep:5, name:"Squat",    duration:30, session:"Short Cycle" },
+  { prep:5, name:"Lunge",              duration:30, session:"Short Cycle" },
+
+ // ── Short Cycle - Medium ──────────────────────────────────────
+  { prep:5, name:"Bicycle Crunch",                     duration:30, session:"Short Cycle - Medium" },
+  { prep:5, name:"One-Leg Push-up -- Switch Leg ",          duration:32, session:"Short Cycle - Medium" },
+  { prep:5, name:"One-Leg Bridge -- Switch Leg",           duration:32, session:"Short Cycle - Medium" },
+  { prep:5, name:"One-Leg Squat -- Switch Leg",            duration:32, session:"Short Cycle - Medium" },
+  { prep:5, name:"Reverse Lunge & Knee Lift",          duration:30, session:"Short Cycle - Medium" },
+
  // ── Test ──────────────────────────────────────
   { prep:8,  name:"Jumping Jacks",     duration:10, session:"TestA" },
   { prep:5,  name:"Side Plank -- Switch Side", duration:33, session:"TestA" },
@@ -1865,7 +1905,7 @@ function renderEvalUI(users) {
   const container = document.getElementById("eval-container");
   container.innerHTML = users.map(u => `
     <div class="eval-box">
-      <div class="eval-label">${users.length > 1 ? `🧑 ${u} — ` : ""}HOW HEAVY DID THAT FEEL?</div>
+      <div class="eval-label">${users.length > 1 ? `💪 ${u} — ` : ""}HOW HEAVY DID THAT FEEL?</div>
       <div class="eval-scale-labels"><span>LIGHT</span><span>HEAVY</span></div>
       <div class="sweat-row">
         ${[1,2,3,4,5].map(v => `<span class="sweat" data-user="${u}" data-v="${v}">${FACE_SCALE[v-1]}</span>`).join("")}
@@ -2119,11 +2159,163 @@ function switchTab(tab) {
   document.getElementById("view-timer").style.display = tab === "timer" ? "block" : "none";
   document.getElementById("view-list").style.display = tab === "list" ? "block" : "none";
   document.getElementById("view-stats").style.display = tab === "stats" ? "block" : "none";
+  document.getElementById("view-exercises").style.display = tab === "exercises" ? "block" : "none";
   document.getElementById("tab-timer").className = "tab" + (tab === "timer" ? " active" : "");
   document.getElementById("tab-list").className = "tab" + (tab === "list" ? " active" : "");
   document.getElementById("tab-stats").className = "tab" + (tab === "stats" ? " active" : "");
+  document.getElementById("tab-exercises").className = "tab" + (tab === "exercises" ? " active" : "");
   if (tab === "list") renderList();
   if (tab === "stats") updateStatsDisplay();
+  if (tab === "exercises") renderExerciseGuide();
+}
+
+// ─── EXERCISE GUIDE (new tab) ──────────────────────────────────────
+// Strips both the "-- Switch Side" suffix (see parseSwitchName) and any
+// "First/Second/Third Cycle - " prefix used for repeated circuit rounds,
+// so e.g. "First Cycle - Burpees" and "Third Cycle - Burpees" both match
+// the single "Burpees" entry below instead of needing three entries.
+function canonicalExerciseName(name) {
+  const split = parseSwitchName(name);
+  let n = split ? split.main : name;
+  n = n.replace(/^(First|Second|Third|Fourth)\s+Cycle\s*-\s*/i, "").trim();
+  return n;
+}
+
+function categoryIcon(name) {
+  const n = name.toLowerCase();
+  if (/push|dip/.test(n)) return "💪";
+  if (/plank|crunch|bird dog|superman|swimmer|windscreen|scissor|v sit/.test(n)) return "🧘";
+  if (/jump|burpee|mountain climber|high knee|march|shuffle|hop|skater|box|thrust/.test(n)) return "🤸";
+  if (/stretch|roll|hug|rotation|drop & touch/.test(n)) return "🙆";
+  if (/squat|lunge|step-up|bridge|deadlift/.test(n)) return "🦵";
+  return "🏋️";
+}
+
+// Short how-to-perform cues, keyed by lowercased canonical name. Every
+// unique exercise in WARMUP/allWorkouts/COOLDOWN should have an entry
+// here; anything missing falls back to a generic cue in renderExerciseGuide().
+const EXERCISE_INFO = {
+  "1-2 box & kick": "Boxing footwork: throw a one-two punch combo, then a front kick — stay light on your feet.",
+  "abdominal crunch": "Lie on your back, knees bent, lift your shoulders off the floor using your abs, then lower slowly.",
+  "advanced bird dog": "From bird dog position, add a crunch — bring elbow and knee together underneath you, then extend back out.",
+  "arm hugs": "Cross your arms across your chest, alternating which arm is on top each rep, to loosen the shoulders.",
+  "arm stretch above": "Reach both arms straight overhead and hold, lengthening through your sides.",
+  "arm stretch backward": "Clasp your hands behind your back and gently lift, opening up the chest.",
+  "arm stretch forward": "Clasp your hands in front of you, round your upper back, and reach forward.",
+  "bicycle crunch": "Lying on your back, alternate bringing elbow to opposite knee in a pedaling motion.",
+  "bird dog": "On hands and knees, extend one arm and the opposite leg straight out, keeping your back flat.",
+  "bird dog push-up": "Combine a bird dog extension with a push-up between reps for added core challenge.",
+  "burpees": "Squat down, kick your feet back into a plank, do a push-up, jump feet back in, then jump up.",
+  "chair decline push-up": "Feet elevated on a chair, hands on the floor — push-up with extra load on the upper chest/shoulders.",
+  "chair pike push-up": "Feet on a chair, hips piked up toward the ceiling, lower your head toward the floor and push back up.",
+  "chair split squat": "Rear foot resting on a chair behind you, lower your front leg into a lunge.",
+  "chair-assist push-up": "Hands on a chair seat instead of the floor — an easier push-up angle for beginners.",
+  "chair-assist split squat": "Hold the chair for balance while performing a split squat (rear-foot-elevated lunge).",
+  "chair-assist squat": "Hold onto a chair for balance as you squat down and stand back up.",
+  "diamond push-up": "Hands together under your chest forming a diamond shape — push-up that emphasizes triceps.",
+  "downward dog grasshopper": "From downward dog, twist and bring one knee toward the opposite elbow, alternating sides.",
+  "drop & touch": "Quickly drop into a squat and touch the floor, then stand back up.",
+  "full side plank": "Side plank with your top arm reaching straight up and legs fully extended and stacked.",
+  "grasshopper push-up": "From a plank, bring one knee across your body toward the same-side elbow, alternating.",
+  "high knees": "Jog in place, driving your knees up toward hip height as fast as you can.",
+  "hindu push-up": "A flowing push-up: hips up like downward dog, dive forward and down, then sweep up into upward dog.",
+  "jump rope skip": "Mimic jumping rope — small, quick hops with wrists circling, no rope needed.",
+  "jumping jacks": "Jump while spreading your legs and raising your arms overhead, then jump back to start.",
+  "knee hugs": "Standing, pull one knee up to your chest and hug it, alternating legs.",
+  "kneeling plank": "Hold a plank position with your knees on the ground instead of your toes.",
+  "kneeling push-up": "Push-up performed with your knees on the floor for reduced load.",
+  "kneeling side plank": "Side plank with your bottom knee bent and resting on the ground for support.",
+  "kneeling staggered push-up": "Knees down, one hand placed further forward than the other, then push-up.",
+  "lateral drop & touch": "Step side to side, dropping down to touch the floor on each side.",
+  "long jumps": "Jump forward as far as you can, landing softly, then jump backward to return.",
+  "lunge": "Step forward and lower until both knees are bent around 90°, then push back to standing.",
+  "lunge & rotation": "While in a lunge, rotate your torso toward your front leg.",
+  "lunge, touch & kick": "Lunge down and touch the floor, then stand and kick the front leg forward.",
+  "march in place": "Walk in place, lifting your knees at a comfortable, steady pace.",
+  "mountain climbers": "From a plank, alternate quickly driving your knees toward your chest.",
+  "one-leg bridge": "Glute bridge with one leg lifted and extended straight, hips driving up.",
+  "one-leg deadlift": "Balance on one leg and hinge forward at the hips, reaching toward the floor.",
+  "one-leg power squat": "Single-leg squat finished with an explosive jump.",
+  "one-leg push-up": "Push-up performed with one leg lifted off the ground for extra core/stability challenge.",
+  "one-leg squat": "Pistol-style squat, balancing and lowering on one leg.",
+  "one-leg squat hops": "Single-leg squat followed by a small hop, landing softly.",
+  "one-leg squat touch": "Single-leg squat while reaching down to touch the floor.",
+  "one-leg triceps dip": "Triceps dip performed with one leg lifted off the ground.",
+  "one-leg wall sit": "Wall sit holding one leg extended straight out, balancing on the other.",
+  "plank": "Hold a straight line from head to heels, supported on forearms and toes.",
+  "plyo split squat": "Jumping lunge — switch legs mid-air between reps, landing softly each time.",
+  "power push-up": "Explosive push-up where your hands leave the ground at the top.",
+  "power squat": "Squat down, then explode upward into a jump.",
+  "push-up": "Hands under shoulders, lower your chest to the floor and press back up, keeping your body straight.",
+  "push-up & rotation": "After a push-up, rotate into a side plank, reaching one arm toward the ceiling.",
+  "quadriceps stretch": "Standing, pull one heel toward your glute to stretch the front of your thigh.",
+  "reverse crunch & hug": "Lift your hips and knees toward your chest, hugging them in at the top.",
+  "reverse lunge": "Step backward into a lunge instead of forward, then return to standing.",
+  "reverse lunge & knee lift": "Reverse lunge, then drive the rear knee up toward your chest as you stand.",
+  "reverse plank": "Sitting, hands behind you, lift your hips to form a straight line facing upward.",
+  "scissor kicks": "Lying on your back, legs straight, alternate small up-and-down scissor-like kicks.",
+  "shoulder roll forward": "Roll your shoulders forward in slow circles to loosen them up.",
+  "side lunge": "Step wide to one side and bend that knee, keeping the other leg straight.",
+  "side plank": "Balance on one forearm with your body in a straight line facing sideways.",
+  "side plank crunch": "From a side plank, crunch your top elbow and knee together, then extend back out.",
+  "side-to-side shuffle": "Quick, low lateral shuffle steps from side to side.",
+  "side-to-side hop": "Hop side to side, landing softly on both feet.",
+  "single-leg stretch": "Seated or lying, extend one leg and gently stretch it, then switch sides.",
+  "skater": "Bound laterally from one leg to the other, like a speed skater's stride.",
+  "spiderman push-up": "During a push-up, bring one knee out toward the same-side elbow.",
+  "squat": "Feet shoulder-width apart, push your hips back and bend your knees as if sitting into a chair.",
+  "squat & box": "Squat down, then throw a couple of punches ('boxing') as you stand.",
+  "squat thrusts": "Squat down, kick your feet back into a plank, then jump them back in — no push-up or jump at the end.",
+  "squats": "Feet shoulder-width apart, push your hips back and bend your knees as if sitting into a chair.",
+  "staggered push-up": "Push-up with one hand placed further forward than the other.",
+  "stand & box": "Standing in place, throw alternating punches with control.",
+  "step-up": "Step up onto a raised surface with one leg, then the other, alternating which leg leads.",
+  "superman": "Lie face down and lift your arms and legs off the floor at the same time.",
+  "swimmer": "Lie face down and alternate lifting opposite arm and leg, like a swimming kick.",
+  "torso rotation": "Standing, rotate your upper body gently from side to side.",
+  "triceps dip": "Hands on a chair or bench behind you, lower your body by bending your elbows, then push back up.",
+  "triceps stretch": "Raise one arm overhead, bend the elbow, and gently pull with the other hand.",
+  "v sit twist": "Balance in a V-sit position and rotate your torso side to side.",
+  "wall sit": "Back flat against a wall, slide down until your knees are at about 90° and hold.",
+  "windscreen wipers": "Lying down with legs raised, sweep them side to side like windscreen wipers.",
+};
+
+function renderExerciseGuide() {
+  const container = document.getElementById("exercise-list");
+  const query = (document.getElementById("exercise-search").value || "").trim().toLowerCase();
+
+  const all = [...WARMUP, ...allWorkouts, ...COOLDOWN];
+  const seen = new Map(); // canonical name -> true, to list each exercise once
+  all.forEach(w => {
+    const canon = canonicalExerciseName(w.name);
+    if (!seen.has(canon)) seen.set(canon, true);
+  });
+
+  const names = [...seen.keys()]
+    .filter(n => !query || n.toLowerCase().includes(query))
+    .sort((a, b) => a.localeCompare(b));
+
+  if (!names.length) {
+    container.innerHTML = `<div class="exercise-empty">No exercises match "${query}".</div>`;
+    return;
+  }
+
+  container.innerHTML = names.map(name => {
+    const info = EXERCISE_INFO[name.toLowerCase()];
+    const desc = info || "Move with control, keep your core engaged, and breathe steadily throughout.";
+    const icon = categoryIcon(name);
+    const link = `https://www.google.com/search?q=${encodeURIComponent(name + " exercise how to perform")}`;
+    return `
+      <div class="exercise-card">
+        <div class="exercise-icon">${icon}</div>
+        <div class="exercise-body">
+          <div class="exercise-name">${name}</div>
+          <div class="exercise-desc">${desc}</div>
+          <a class="exercise-link" href="${link}" target="_blank" rel="noopener">🔗 More info &amp; pictures</a>
+        </div>
+      </div>
+    `;
+  }).join("");
 }
 
 // ─── CSV IMPORT ──────────────────────────────────────────────────
