@@ -311,6 +311,8 @@
   .chart-empty { font-size:13px; color:var(--muted); text-align:center; padding:20px 10px; }
   .chart-bar-label { font-size:9px; fill:var(--muted); font-family:var(--font-ui); }
   .chart-y-emoji { font-size:11px; }
+  .chart-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; width:100%; }
+  .chart-scroll svg { display:block; }
   .pie-wrap { display:flex; align-items:center; gap:16px; }
   .pie-legend { display:flex; flex-direction:column; gap:6px; flex:1; min-width:0; }
   .pie-legend-row { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text); }
@@ -506,12 +508,12 @@
         </div>
 
         <div class="chart-card">
-          <div class="chart-title">WORKLOAD TREND (recent sessions, 🥵 = heavy)</div>
+          <div class="chart-title">WORKLOAD TREND (scroll for history, 🥵 = heavy)</div>
           <div id="workload-chart-J"></div>
         </div>
 
         <div class="chart-card">
-          <div class="chart-title">WEEKLY MINUTES (number above bar = sessions that week)</div>
+          <div class="chart-title">WEEKLY MINUTES — core / warm-up / cool-down (number above bar = sessions)</div>
           <div id="weekly-chart-J"></div>
         </div>
 
@@ -539,12 +541,12 @@
         </div>
 
         <div class="chart-card">
-          <div class="chart-title">WORKLOAD TREND (recent sessions, 🥵 = heavy)</div>
+          <div class="chart-title">WORKLOAD TREND (scroll for history, 🥵 = heavy)</div>
           <div id="workload-chart-T"></div>
         </div>
 
         <div class="chart-card">
-          <div class="chart-title">WEEKLY MINUTES (number above bar = sessions that week)</div>
+          <div class="chart-title">WEEKLY MINUTES — core / warm-up / cool-down (number above bar = sessions)</div>
           <div id="weekly-chart-T"></div>
         </div>
 
@@ -1874,6 +1876,18 @@ function finishWorkout() {
   document.getElementById("timer-screen").style.display = "none";
   document.getElementById("done-screen").style.display = "block";
   const total = currentWorkouts.reduce((a, w, i) => a + prepSecondsFor(i, w) + w.duration, 0);
+
+  // Split that same total into warm-up / core / cool-down seconds, using
+  // the same section boundaries (mainStartIdx/mainEndIdx) the live
+  // announcements use — this is what feeds the stacked weekly chart.
+  let warmupSecs = 0, coreSecs = 0, cooldownSecs = 0;
+  currentWorkouts.forEach((w, i) => {
+    const secs = prepSecondsFor(i, w) + w.duration;
+    if (i < mainStartIdx) warmupSecs += secs;
+    else if (i >= mainEndIdx) cooldownSecs += secs;
+    else coreSecs += secs;
+  });
+
   const users = sessionUsers.length ? sessionUsers : ["J"]; // safety fallback, shouldn't normally happen
   document.getElementById("done-sub").textContent =
     `${currentWorkouts.length} exercises · ${formatTime(total)} totaal · ${users.join(" & ")}`;
@@ -1887,6 +1901,9 @@ function finishWorkout() {
       date: new Date().toISOString(),
       session: selectedSession,
       duration: total,
+      coreDuration: coreSecs,
+      warmupDuration: warmupSecs,
+      cooldownDuration: cooldownSecs,
       rating: null,
       user: u
     });
@@ -2481,30 +2498,32 @@ function ratingColor(r) {
 
 function renderWorkloadChart(user) {
   const container = document.getElementById(`workload-chart-${user}`);
-  const rated = historyForUser(user).filter(h => h.rating).slice(-14); // most recent 14 rated sessions for this person
+  const rated = historyForUser(user).filter(h => h.rating); // every rated session for this person, oldest to newest
   if (!rated.length) {
     container.innerHTML = `<div class="chart-empty">${user} hasn't rated a workout yet — ratings will start showing the workload trend here.</div>`;
     return;
   }
 
-  const W = 320, H = 130;
-  const padL = 22, padR = 8, padTop = 22, padBottom = 22;
-  const chartW = W - padL - padR;
+  const H = 130;
+  const AXIS_W = 22;               // fixed, never-scrolling y-axis column
+  const padL2 = 10, padR = 16, padTop = 22, padBottom = 22;
   const chartH = H - padTop - padBottom;
   const n = rated.length;
-  const gap = 6;
-  const barW = Math.max(10, (chartW - gap * (n - 1)) / n);
+  const barW = 14, gap = 20; // fixed per-point spacing — the chart grows wider and scrolls instead of squeezing points
+  const chartW = n * (barW + gap);
+  const scrollW = padL2 + chartW + padR;
 
-  // Y-axis: one face per rating level (1 = 😌 at the bottom, 5 = 🥵 at the top)
+  // Y-axis: one face per rating level (1 = 😌 at the bottom, 5 = 🥵 at the top) —
+  // drawn in its own small fixed SVG so it stays visible while the data scrolls.
   let yAxis = "";
   for (let v = 1; v <= 5; v++) {
     const gy = padTop + chartH - (v / 5) * chartH;
-    yAxis += `<text x="${(padL - 6).toFixed(1)}" y="${(gy + 4).toFixed(1)}" text-anchor="end" class="chart-y-emoji">${FACE_SCALE[v - 1]}</text>`;
+    yAxis += `<text x="${AXIS_W - 6}" y="${(gy + 4).toFixed(1)}" text-anchor="end" class="chart-y-emoji">${FACE_SCALE[v - 1]}</text>`;
   }
 
   // Points are placed by their center x (same spacing as bars used), y by rating height
   const points = rated.map((h, i) => {
-    const x = padL + i * (barW + gap) + barW / 2;
+    const x = padL2 + i * (barW + gap) + barW / 2;
     const y = padTop + chartH - (h.rating / 5) * chartH;
     return { x, y, h };
   });
@@ -2519,18 +2538,28 @@ function renderWorkloadChart(user) {
     dots += `
       <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="5" fill="${ratingColor(h.rating)}" />
       <text x="${p.x.toFixed(1)}" y="${(p.y - 10).toFixed(1)}" text-anchor="middle" class="chart-bar-value">${h.rating}</text>
-      ${n <= 10 ? `<text x="${p.x.toFixed(1)}" y="${H - 6}" text-anchor="middle" class="chart-bar-label">${label}</text>` : ""}
+      <text x="${p.x.toFixed(1)}" y="${H - 6}" text-anchor="middle" class="chart-bar-label">${label}</text>
     `;
   });
 
   container.innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block;">
-      ${yAxis}
-      <line x1="${padL}" y1="${padTop + chartH}" x2="${W - padR}" y2="${padTop + chartH}" stroke="var(--border)" stroke-width="1" />
-      <polyline points="${polylinePoints}" fill="none" stroke="var(--green)" stroke-width="2" />
-      ${dots}
-    </svg>
+    <div style="display:flex; align-items:flex-start;">
+      <svg width="${AXIS_W}" height="${H}" style="flex-shrink:0; display:block;">
+        ${yAxis}
+      </svg>
+      <div class="chart-scroll" id="workload-scroll-${user}">
+        <svg width="${scrollW}" height="${H}">
+          <line x1="${padL2}" y1="${padTop + chartH}" x2="${scrollW - padR}" y2="${padTop + chartH}" stroke="var(--border)" stroke-width="1" />
+          <polyline points="${polylinePoints}" fill="none" stroke="var(--green)" stroke-width="2" />
+          ${dots}
+        </svg>
+      </div>
+    </div>
   `;
+
+  // Start scrolled to the right, showing the most recent session by default.
+  const scrollEl = document.getElementById(`workload-scroll-${user}`);
+  if (scrollEl) scrollEl.scrollLeft = scrollEl.scrollWidth;
 }
 
 // ─── WEEKLY MINUTES CHART (bar per Monday-start week) ─────────────
@@ -2544,6 +2573,10 @@ function startOfWeekMonday(d) {
   return date;
 }
 
+// Colors for the 3 stacked segments — core at the bottom, then warm-up,
+// then cool-down on top.
+const SECTION_COLORS = { core: "#10B981", warmup: "#F59E0B", cooldown: "#3B82F6" };
+
 function renderWeeklyMinutesChart(user) {
   const container = document.getElementById(`weekly-chart-${user}`);
   const userHistory = historyForUser(user);
@@ -2552,15 +2585,24 @@ function renderWeeklyMinutesChart(user) {
     return;
   }
 
-  // Group sessions into Monday-start weeks, summing minutes and counting
-  // sessions per week.
-  const weeks = new Map(); // key: week-start date string -> { weekStart, minutes, sessions }
+  // Group sessions into Monday-start weeks, summing minutes per section
+  // (core/warm-up/cool-down) and counting sessions per week. Older
+  // history entries saved before the breakdown existed count entirely
+  // as core minutes, since that's the bulk of any session anyway.
+  const weeks = new Map(); // key: week-start date string -> { weekStart, core, warmup, cooldown, sessions }
   userHistory.forEach(h => {
     const weekStart = startOfWeekMonday(h.date);
     const key = weekStart.toISOString().slice(0, 10);
-    if (!weeks.has(key)) weeks.set(key, { weekStart, minutes: 0, sessions: 0 });
+    if (!weeks.has(key)) weeks.set(key, { weekStart, core: 0, warmup: 0, cooldown: 0, sessions: 0 });
     const entry = weeks.get(key);
-    entry.minutes += (h.duration || 0) / 60;
+    const hasBreakdown = h.coreDuration != null || h.warmupDuration != null || h.cooldownDuration != null;
+    if (hasBreakdown) {
+      entry.core += (h.coreDuration || 0) / 60;
+      entry.warmup += (h.warmupDuration || 0) / 60;
+      entry.cooldown += (h.cooldownDuration || 0) / 60;
+    } else {
+      entry.core += (h.duration || 0) / 60; // older entry, no breakdown saved — count as core
+    }
     entry.sessions += 1;
   });
 
@@ -2574,7 +2616,7 @@ function renderWeeklyMinutesChart(user) {
   const n = recent.length;
   const gap = 10;
   const barW = Math.max(14, (chartW - gap * (n - 1)) / n);
-  const maxMinutes = Math.max(...recent.map(w => w.minutes), 1);
+  const maxMinutes = Math.max(...recent.map(w => w.core + w.warmup + w.cooldown), 1);
 
   // Round the axis top up to the next 10-minute step so gridlines land on
   // clean values (10, 20, 30…) and bars scale against that same top.
@@ -2593,16 +2635,34 @@ function renderWeeklyMinutesChart(user) {
   let bars = "";
   recent.forEach((w, i) => {
     const x = padL + i * (barW + gap);
-    const barH = Math.max(2, (w.minutes / axisMax) * chartH);
-    const y = padTop + chartH - barH;
     const cx = x + barW / 2;
+    const total = w.core + w.warmup + w.cooldown;
+
+    // Stack bottom-up: core first, then warm-up, then cool-down on top.
+    let cumulative = 0;
+    [["core", w.core], ["warmup", w.warmup], ["cooldown", w.cooldown]].forEach(([section, minutes]) => {
+      if (minutes <= 0) return;
+      const segH = (minutes / axisMax) * chartH;
+      const segY = padTop + chartH - ((cumulative + minutes) / axisMax) * chartH;
+      cumulative += minutes;
+      bars += `<rect x="${x.toFixed(1)}" y="${segY.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(1, segH).toFixed(1)}" fill="${SECTION_COLORS[section]}" />`;
+    });
+
+    const topY = padTop + chartH - (total / axisMax) * chartH;
     const label = `${w.weekStart.getDate()}/${w.weekStart.getMonth() + 1}`;
     bars += `
-      <text x="${cx.toFixed(1)}" y="${(y - 8).toFixed(1)}" text-anchor="middle" class="chart-bar-value">${w.sessions}</text>
-      <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="4" fill="var(--green)" />
+      <text x="${cx.toFixed(1)}" y="${(topY - 8).toFixed(1)}" text-anchor="middle" class="chart-bar-value">${w.sessions}</text>
       <text x="${cx.toFixed(1)}" y="${(H - 6).toFixed(1)}" text-anchor="middle" class="chart-bar-label">${label}</text>
     `;
   });
+
+  const legend = `
+    <div class="pie-legend-row" style="justify-content:center; gap:14px; margin-top:4px;">
+      <span style="display:flex; align-items:center; gap:4px;"><span class="pie-legend-dot" style="background:${SECTION_COLORS.core}"></span>Core</span>
+      <span style="display:flex; align-items:center; gap:4px;"><span class="pie-legend-dot" style="background:${SECTION_COLORS.warmup}"></span>Warm-up</span>
+      <span style="display:flex; align-items:center; gap:4px;"><span class="pie-legend-dot" style="background:${SECTION_COLORS.cooldown}"></span>Cool-down</span>
+    </div>
+  `;
 
   container.innerHTML = `
     <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block;">
@@ -2610,6 +2670,7 @@ function renderWeeklyMinutesChart(user) {
       <line x1="${padL}" y1="${padTop + chartH}" x2="${W - padR}" y2="${padTop + chartH}" stroke="var(--border)" stroke-width="1" />
       ${bars}
     </svg>
+    ${legend}
   `;
 }
 
@@ -2679,24 +2740,46 @@ function csvEscape(str) {
   return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
 }
 
+// Shares/saves a file the smoothest way the browser supports. On iOS,
+// navigator.share with a file goes straight to the native share sheet —
+// "Save to Files" is right there, one tap, no detour through Downloads.
+// Falls back to the classic <a download> blob trick where Web Share
+// isn't available (desktop browsers, older Safari).
+async function shareOrDownloadFile(blob, filename, mimeType) {
+  try {
+    const file = new File([blob], filename, { type: mimeType });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: filename });
+      return;
+    }
+  } catch (err) {
+    // User cancelled the share sheet, or share failed — fall through to download.
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function exportHistoryCSV() {
   if (!workoutHistory.length) {
     showMessage("No workout history yet to export.", false);
     return;
   }
-  const rows = [["date", "session", "duration_seconds", "rating", "user"].join(",")];
+  const rows = [["date", "session", "duration_seconds", "core_seconds", "warmup_seconds", "cooldown_seconds", "rating", "user"].join(",")];
   workoutHistory.forEach(h => {
     const ratingVal = h.rating == null ? "" : h.rating;
     const userVal = h.user == null ? "" : h.user;
-    rows.push([h.date, csvEscape(h.session), h.duration, ratingVal, csvEscape(userVal)].join(","));
+    const coreVal = h.coreDuration == null ? "" : h.coreDuration;
+    const warmupVal = h.warmupDuration == null ? "" : h.warmupDuration;
+    const cooldownVal = h.cooldownDuration == null ? "" : h.cooldownDuration;
+    rows.push([h.date, csvEscape(h.session), h.duration, coreVal, warmupVal, cooldownVal, ratingVal, csvEscape(userVal)].join(","));
   });
   const blob = new Blob([rows.join("\n")], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "workout-history-" + new Date().toISOString().slice(0, 10) + ".csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  const filename = "workout-history-" + new Date().toISOString().slice(0, 10) + ".csv";
+  shareOrDownloadFile(blob, filename, "text/csv");
 }
 
 function handleHistoryCSV(e) {
@@ -2706,7 +2789,12 @@ function handleHistoryCSV(e) {
   reader.onload = ev => {
     try {
       const lines = ev.target.result.split(/\r?\n/).filter(l => l.trim());
-      const startRow = lines[0] && lines[0].toLowerCase().startsWith("date") ? 1 : 0;
+      const hasHeader = lines[0] && lines[0].toLowerCase().startsWith("date");
+      const startRow = hasHeader ? 1 : 0;
+      // Newer exports have 3 extra columns (core/warmup/cooldown seconds)
+      // inserted before rating/user; detect that from the header so older
+      // exports still import correctly at their original column positions.
+      const hasBreakdown = hasHeader && lines[0].toLowerCase().includes("core_seconds");
       const imported = [];
       for (let i = startRow; i < lines.length; i++) {
         const cols = parseCSVLine(lines[i]);
@@ -2714,14 +2802,25 @@ function handleHistoryCSV(e) {
         const date = cols[0].trim();
         const session = cols[1].trim();
         const duration = parseInt(cols[2]);
-        const ratingRaw = (cols[3] || "").trim();
+        const ratingIdx = hasBreakdown ? 6 : 3;
+        const userIdx = hasBreakdown ? 7 : 4;
+        const ratingRaw = (cols[ratingIdx] || "").trim();
         const rating = ratingRaw !== "" ? parseInt(ratingRaw) : null;
-        const user = (cols[4] || "").trim() || undefined; // older exports may not have a user column
+        const user = (cols[userIdx] || "").trim() || undefined; // older exports may not have a user column
         if (!date || !session || isNaN(duration)) continue;
-        imported.push({ date, session, duration, rating: isNaN(rating) ? null : rating, user });
+        const entry = { date, session, duration, rating: isNaN(rating) ? null : rating, user };
+        if (hasBreakdown) {
+          const coreRaw = (cols[3] || "").trim();
+          const warmupRaw = (cols[4] || "").trim();
+          const cooldownRaw = (cols[5] || "").trim();
+          if (coreRaw !== "") entry.coreDuration = parseInt(coreRaw);
+          if (warmupRaw !== "") entry.warmupDuration = parseInt(warmupRaw);
+          if (cooldownRaw !== "") entry.cooldownDuration = parseInt(cooldownRaw);
+        }
+        imported.push(entry);
       }
       if (!imported.length) {
-        showMessage("No valid rows found. Format: date, session, duration_seconds, rating, user", false);
+        showMessage("No valid rows found. Format: date, session, duration_seconds, core_seconds, warmup_seconds, cooldown_seconds, rating, user", false);
         return;
       }
       const seen = new Set(workoutHistory.map(h => h.date + "|" + h.session + "|" + h.duration + "|" + (h.user == null ? "" : h.user)));
