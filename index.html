@@ -2749,7 +2749,7 @@ async function shareOrDownloadFile(blob, filename, mimeType) {
   try {
     const file = new File([blob], filename, { type: mimeType });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: filename });
+      await navigator.share({ files: [file] });
       return;
     }
   } catch (err) {
