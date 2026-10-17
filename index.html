@@ -71,12 +71,13 @@
     display:flex; gap:4px; margin-top:22px;
     background: #E5E7EB; border-radius:14px; padding:4px;
     width:calc(100% - 48px); max-width:472px;
+    overflow-x:auto; -webkit-overflow-scrolling:touch;
   }
   .tab {
-    flex:1; padding:10px 0; border-radius:10px; border:none;
+    flex:0 0 auto; min-width:84px; padding:10px 8px; border-radius:10px; border:none;
     background:transparent; color:var(--muted);
     font-family:var(--font-ui); font-weight:700; font-size:12px; letter-spacing:1.5px;
-    cursor:pointer; transition:all 0.2s;
+    cursor:pointer; transition:all 0.2s; white-space:nowrap;
   }
   .tab.active { background:#FFFFFF; color:var(--text); box-shadow:0 1px 4px rgba(0,0,0,0.1); }
 
@@ -177,6 +178,12 @@
   .done-emoji { font-size:72px; }
   .done-title { font-size:28px; font-weight:800; color:var(--pink); letter-spacing:1px; margin-top:12px; }
   .done-sub { color:var(--muted); font-size:14px; margin-top:8px; }
+  .achievement-banner {
+    margin-top:14px; padding:12px 18px; border-radius:14px;
+    background:linear-gradient(135deg, #FEF3C7, #FDE68A); border:1.5px solid #F59E0B;
+    color:#92400E; font-weight:700; font-size:14px; text-align:center;
+  }
+  .achievement-banner + .achievement-banner { margin-top:8px; }
 
   /* LIST tab */
   .list-screen { width:100%; max-width:520px; padding:20px 24px 0; display:flex; flex-direction:column; gap:10px; }
@@ -249,6 +256,20 @@
   .exercise-link { display:inline-block; margin-top:6px; font-size:12px; font-weight:700; color:var(--green); text-decoration:none; }
   .exercise-link:active { opacity:0.7; }
   .exercise-empty { text-align:center; color:var(--muted); font-size:13px; padding:30px 0; }
+
+  .history-user-toggle { display:flex; gap:8px; width:100%; max-width:472px; }
+  .history-row {
+    display:flex; align-items:center; gap:10px; background:var(--card);
+    border:1.5px solid var(--border); border-radius:14px; padding:12px 14px; box-shadow:var(--shadow);
+  }
+  .history-row-body { flex:1; min-width:0; }
+  .history-row-top { display:flex; align-items:center; gap:6px; font-weight:800; font-size:14px; color:var(--text); }
+  .history-row-meta { font-size:12px; color:var(--muted); margin-top:2px; }
+  .history-delete-btn {
+    flex-shrink:0; width:36px; height:36px; border-radius:10px; border:1.5px solid var(--border);
+    background:var(--card); font-size:16px; cursor:pointer; color:#EF4444;
+  }
+  .history-delete-btn:active { background:#FEE2E2; }
 
   .stats-grid { display:flex; gap:10px; width:100%; }
   .stat-card {
@@ -380,6 +401,7 @@
   <button class="tab" onclick="switchTab('list')" id="tab-list">📋 LIST</button>
   <button class="tab" onclick="switchTab('stats')" id="tab-stats">📊 STATS</button>
   <button class="tab" onclick="switchTab('exercises')" id="tab-exercises">📖 EXERCISES</button>
+  <button class="tab" onclick="switchTab('history')" id="tab-history">🗑 HISTORY</button>
 </div>
 
 <!-- ========== TIMER TAB ========== -->
@@ -463,6 +485,8 @@
     <div class="done-title">WORKOUT FINISHED!</div>
     <div class="done-sub" id="done-sub"></div>
 
+    <div id="achievement-messages"></div>
+
     <div id="eval-container"></div>
 
     <button class="btn-start-session" onclick="showSessions()" style="margin-top:20px; width:280px;">↩ BACK TO SESSIONS</button>
@@ -485,74 +509,74 @@
 <div id="view-stats" style="display:none">
   <div class="stats-screen">
     <div class="stats-user-toggle" id="stats-user-toggle">
-      <button class="stats-user-btn active" data-user="J" onclick="switchStatsUser('J')">👨 J</button>
-      <button class="stats-user-btn" data-user="T" onclick="switchStatsUser('T')">🧑 T</button>
+      <button class="stats-user-btn active" data-user="Joris" onclick="switchStatsUser('Joris')">👨 Joris</button>
+      <button class="stats-user-btn" data-user="Tina" onclick="switchStatsUser('Tina')">🧑 Tina</button>
     </div>
 
     <div class="stats-columns">
-      <div class="stats-panel active" id="stats-panel-J" data-user="J">
-        <div class="stats-panel-title">👨 J</div>
+      <div class="stats-panel active" id="stats-panel-Joris" data-user="Joris">
+        <div class="stats-panel-title">👨 Joris</div>
         <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-value" id="stat-total-J">0</div>
+            <div class="stat-value" id="stat-total-Joris">0</div>
             <div class="stat-label">WORKOUTS DONE</div>
           </div>
           <div class="stat-card">
-            <div class="stat-value" id="stat-time-J">0m</div>
+            <div class="stat-value" id="stat-time-Joris">0m</div>
             <div class="stat-label">TOTAL TIME</div>
           </div>
           <div class="stat-card">
-            <div class="stat-value" id="stat-streak-J">0🔥</div>
+            <div class="stat-value" id="stat-streak-Joris">0🔥</div>
             <div class="stat-label">WEEK STREAK</div>
           </div>
         </div>
 
         <div class="chart-card">
-          <div class="chart-title">WORKLOAD TREND (scroll for history, 🥵 = heavy)</div>
-          <div id="workload-chart-J"></div>
+          <div class="chart-title">WORKLOAD TREND (🥵 = heavy, scroll for history)</div>
+          <div id="workload-chart-Joris"></div>
         </div>
 
         <div class="chart-card">
           <div class="chart-title">WEEKLY MINUTES — core / warm-up / cool-down (number above bar = sessions)</div>
-          <div id="weekly-chart-J"></div>
+          <div id="weekly-chart-Joris"></div>
         </div>
 
         <div class="chart-card">
           <div class="chart-title">SESSIONS DONE (how many times each)</div>
-          <div id="session-pie-J"></div>
+          <div id="session-pie-Joris"></div>
         </div>
       </div>
 
-      <div class="stats-panel" id="stats-panel-T" data-user="T">
-        <div class="stats-panel-title">🧑 T</div>
+      <div class="stats-panel" id="stats-panel-Tina" data-user="Tina">
+        <div class="stats-panel-title">🧑 Tina</div>
         <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-value" id="stat-total-T">0</div>
+            <div class="stat-value" id="stat-total-Tina">0</div>
             <div class="stat-label">WORKOUTS DONE</div>
           </div>
           <div class="stat-card">
-            <div class="stat-value" id="stat-time-T">0m</div>
+            <div class="stat-value" id="stat-time-Tina">0m</div>
             <div class="stat-label">TOTAL TIME</div>
           </div>
           <div class="stat-card">
-            <div class="stat-value" id="stat-streak-T">0🔥</div>
+            <div class="stat-value" id="stat-streak-Tina">0🔥</div>
             <div class="stat-label">WEEK STREAK</div>
           </div>
         </div>
 
         <div class="chart-card">
-          <div class="chart-title">WORKLOAD TREND (scroll for history, 🥵 = heavy)</div>
-          <div id="workload-chart-T"></div>
+          <div class="chart-title">WORKLOAD TREND (🥵 = heavy, scroll for history)</div>
+          <div id="workload-chart-Tina"></div>
         </div>
 
         <div class="chart-card">
           <div class="chart-title">WEEKLY MINUTES — core / warm-up / cool-down (number above bar = sessions)</div>
-          <div id="weekly-chart-T"></div>
+          <div id="weekly-chart-Tina"></div>
         </div>
 
         <div class="chart-card">
           <div class="chart-title">SESSIONS DONE (how many times each)</div>
-          <div id="session-pie-T"></div>
+          <div id="session-pie-Tina"></div>
         </div>
       </div>
     </div>
@@ -576,6 +600,18 @@
   <div class="exercises-screen">
     <input type="text" id="exercise-search" class="exercise-search" placeholder="🔎 Search exercises…" oninput="renderExerciseGuide()">
     <div id="exercise-list"></div>
+  </div>
+</div>
+
+<div id="view-history" style="display:none">
+  <div class="exercises-screen">
+    <div class="history-user-toggle" id="history-user-toggle">
+      <button class="stats-user-btn active" data-user="all" onclick="switchHistoryFilter('all')">All</button>
+      <button class="stats-user-btn" data-user="Joris" onclick="switchHistoryFilter('Joris')">🧑 Joris</button>
+      <button class="stats-user-btn" data-user="Tina" onclick="switchHistoryFilter('Tina')">👨 Tina</button>
+    </div>
+    <div class="list-hint">Tap 🗑 to remove a single mistaken session — this only deletes that one entry, not your whole history.</div>
+    <div id="history-list"></div>
   </div>
 </div>
 
@@ -628,6 +664,1590 @@ document.addEventListener('visibilitychange', async () => {
     await requestWakeLock();
   }
 });
+
+
+
+
+// Builds the full step list for a session given whether warm-up/cool-down
+// are included. Used both for the real run (beginWorkout) and for preview
+// totals on the session cards — for the real run the main exercises are
+// kept by reference (so List-tab progress tracking still works); for
+// preview it doesn't matter since nothing needs object identity there.
+function composeSession(name, incWarm, incCool) {
+  const main = sessions[name] || [];
+  const warm = incWarm ? WARMUP.map(w => Object.assign({}, w, { session: name })) : [];
+  const cool = incCool ? COOLDOWN.map(w => Object.assign({}, w, { session: name })) : [];
+  return {
+    list: [...warm, ...main, ...cool],
+    mainStart: warm.length,
+    mainEnd: warm.length + main.length
+  };
+}
+
+// True if step `idx` is the first exercise of a section (Warm-up, Core,
+// or Cool-down) — the start of the very first section, the warm-up →
+// core boundary, and the core → cool-down boundary. Each of these gets
+// a single 10-second "get ready" announcement (see SECTION_ANNOUNCE_SECS)
+// instead of that exercise's own normal prep time.
+function isSectionStart(idx, mainStart, mainEnd) {
+  return idx === 0 || idx === mainStart || idx === mainEnd;
+}
+
+// Prep seconds to use for step `idx` in a composed list, given where the
+// main section starts/ends. Every section boundary (Warm-up, Core,
+// Cool-down) gets the fixed SECTION_ANNOUNCE_SECS; everything else uses
+// its own defined prep value.
+function previewPrepSeconds(idx, w, mainStart, mainEnd) {
+  if (isSectionStart(idx, mainStart, mainEnd)) return SECTION_ANNOUNCE_SECS;
+  return w.prep || 0;
+}
+
+// Full preview total (in seconds) for a session, including whichever of
+// warm-up/cool-down are currently toggled on. The very first step's 10s
+// section announcement already covers the "get ready for the session"
+// moment, so there's no separate intro time to add on top.
+function sessionPreviewTotal(name, incWarm, incCool) {
+  const { list, mainStart, mainEnd } = composeSession(name, incWarm, incCool);
+  let total = 0;
+  list.forEach((w, i) => { total += previewPrepSeconds(i, w, mainStart, mainEnd) + w.duration; });
+  return { list, total };
+}
+
+// ─── STATE ───────────────────────────────────────────────────────
+let sessions = {};
+let selectedSession = null;
+let currentWorkouts = [];
+let mainStartIdx = 0;   // index in currentWorkouts where the real session exercises start (after warm-up)
+let mainEndIdx = 0;     // index where the real session exercises end (cool-down starts)
+let includeWarmup = localStorage.getItem("includeWarmup") !== "false";   // default true
+let includeCooldown = localStorage.getItem("includeCooldown") !== "false"; // default true
+let userJChecked = localStorage.getItem("userJChecked") !== "false"; // default true
+let userTChecked = localStorage.getItem("userTChecked") !== "false"; // default true
+let sessionUsers = [];           // who this specific run was logged for, e.g. ["Joris","Tina"]
+let currentRatings = {};         // { J: 4, T: 2 } — picked but not yet saved
+let lastEntryIndexByUser = {};   // { J: idx-in-workoutHistory, T: idx-in-workoutHistory }
+let statsUser = "Joris";         // which user's stats are shown in the Stats tab
+let currentIdx = 0;
+let phase = "idle"; // idle | intro | prep | work | done
+let seconds = 0;
+let totalSeconds = 0;
+let running = false;
+let timerInterval = null;
+let currentTab = "timer";
+
+// ─── WORKOUT HISTORY / STATS ──────────────────────────────────────
+// Persisted in localStorage on this device. Each entry:
+// { date: ISOString, session: name, duration: seconds, rating: 1-5|null, user: "Joris"|"Tina" }
+let workoutHistory = loadHistory();
+
+// Older saved history (and older exported CSVs) may still use the short
+// codes "J"/"T" from before the rename — map those to the full names so
+// every part of the app can just compare against "Joris"/"Tina" directly.
+const USER_CODE_MIGRATION = { "J": "Joris", "T": "Tina" };
+function migrateUserCode(user) {
+  return USER_CODE_MIGRATION[user] || user;
+}
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem("workoutHistory");
+    const parsed = raw ? JSON.parse(raw) : [];
+    let migrated = false;
+    parsed.forEach(h => {
+      if (h.user === "J" || h.user === "T") { h.user = migrateUserCode(h.user); migrated = true; }
+    });
+    if (migrated) {
+      try { localStorage.setItem("workoutHistory", JSON.stringify(parsed)); } catch (e) {}
+    }
+    return parsed;
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveHistoryToStorage() {
+  try {
+    localStorage.setItem("workoutHistory", JSON.stringify(workoutHistory));
+  } catch (e) {
+    showMessage("Couldn't save history: " + e.message, true);
+  }
+}
+
+// ─── AUDIO ───────────────────────────────────────────────────────
+const AudioCtx = window.AudioContext;
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  return audioCtx;
+}
+
+function playBeep(freq, duration, vol = 0.4) {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
+  } catch(e) {}
+}
+
+function playCountdownBeep(n) {
+  // 3 short beeps for 3,2,1 — higher pitch on last
+  if (n === 1) playBeep(880, 0.25, 0.5);
+  else playBeep(660, 0.2, 0.35);
+}
+
+function playStartBeep() {
+  // Double high beep = GO!
+  playBeep(1046, 0.15, 0.5);
+  setTimeout(() => playBeep(1318, 0.3, 0.6), 160);
+}
+
+// ─── SPEECH ──────────────────────────────────────────────────────
+// Tries to pick a female English voice; falls back to default.
+// getVoices() can return an empty list until the browser finishes
+// loading them asynchronously, so we cache the result once it fires.
+let cachedVoices = [];
+function loadVoices() { cachedVoices = window.speechSynthesis.getVoices(); }
+if (window.speechSynthesis) {
+  loadVoices();
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+function getVoice() {
+  const voices = cachedVoices.length ? cachedVoices : window.speechSynthesis.getVoices();
+  // Prefer high-quality female English voices (Samantha, Karen, Moira on iOS)
+  const preferred = ["Samantha", "Karen", "Moira", "Tessa", "Fiona"];
+  for (const name of preferred) {
+    const v = voices.find(v => v.name.includes(name));
+    if (v) return v;
+  }
+  // Fallback: any female en-US/en-GB voice
+  return voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("female"))
+      || voices.find(v => v.lang.startsWith("en"))
+      || null;
+}
+
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const voice = getVoice();
+  const baseRate = 1.0;     // natural pace
+  const basePitch = 1.25;   // bright, upbeat tone
+  const baseVolume = 1.0;
+
+  // Wrap a word/phrase in **asterisks** to accentuate it — it's split out
+  // into its own utterance with a slightly slower rate and higher pitch,
+  // then queued right after the rest so it plays back-to-back.
+  const parts = text.split(/\*\*(.+?)\*\*/g).filter(p => p !== "");
+  parts.forEach((part, i) => {
+    const emphasized = i % 2 === 1;
+    const u = new SpeechSynthesisUtterance(part);
+    u.lang = "en-US";
+    if (voice) u.voice = voice;
+    u.rate = emphasized ? Math.max(0.5, baseRate * 0.85) : baseRate;
+    u.pitch = emphasized ? Math.min(2, basePitch + 0.2) : basePitch;
+    u.volume = emphasized ? 1.0 : baseVolume;
+    window.speechSynthesis.speak(u);
+  });
+}
+
+
+let midMotivationsFired = [false, false];
+
+function pickPhrase(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function resetMidMotivations() {
+  midMotivationsFired = [false, false];
+}
+
+// Called each tick to check if we should fire a mid-workout motivation.
+// Scoped to the core session only (mainStartIdx..mainEndIdx), so warm-up
+// and cool-down length don't skew when these land. Also gated to the
+// halfway point of the current exercise's work phase, so the line plays
+// while you're actually mid-movement instead of right as it starts.
+function checkMidMotivation() {
+  const mainTotal = mainEndIdx - mainStartIdx;
+  if (mainTotal <= 0) return;
+  const doneInMain = currentIdx - mainStartIdx;
+  const pct = doneInMain / mainTotal;
+  const halfway = Math.max(1, Math.floor(totalSeconds / 2));
+  const midpointOfExercise = phase === "work" && seconds <= halfway;
+  // Fire at ~33% through the core session
+  if (!midMotivationsFired[0] && pct >= 0.30 && pct < 0.45 && midpointOfExercise) {
+    midMotivationsFired[0] = true;
+    speak(pickPhrase(MID_PHRASES));
+  }
+  // Fire at ~66% through the core session
+  if (!midMotivationsFired[1] && pct >= 0.62 && pct < 0.75 && midpointOfExercise) {
+    midMotivationsFired[1] = true;
+    speak(pickPhrase(MID_PHRASES));
+  }
+}
+
+// ─── SESSIONS ────────────────────────────────────────────────────
+function buildSessions() {
+  sessions = {};
+  allWorkouts.forEach(w => {
+    const s = w.session || "Algemeen";
+    if (!sessions[s]) sessions[s] = [];
+    sessions[s].push(w);
+  });
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return m + ":" + (sec < 10 ? "0" + sec : String(sec));
+}
+
+function totalDur(list) {
+  return list.reduce((a, w) => a + (w.prep || 0) + w.duration, 0);
+}
+
+function selectSession(name, el) {
+  selectedSession = name;
+  document.querySelectorAll(".session-card").forEach(c => c.classList.remove("selected"));
+  el.classList.add("selected");
+}
+
+function onBookendToggleChange() {
+  includeWarmup = document.getElementById("chk-warmup").checked;
+  includeCooldown = document.getElementById("chk-cooldown").checked;
+  localStorage.setItem("includeWarmup", String(includeWarmup));
+  localStorage.setItem("includeCooldown", String(includeCooldown));
+  renderSessionCards(); // refresh the durations shown on the cards
+}
+
+function onUserToggleChange(who) {
+  const jChk = document.getElementById("chk-user-j");
+  const tChk = document.getElementById("chk-user-t");
+  // Require at least one person selected — revert if this uncheck left none
+  if (!jChk.checked && !tChk.checked) {
+    if (who === "j") jChk.checked = true; else tChk.checked = true;
+    showMessage("At least one person needs to be selected.", false);
+  }
+  userJChecked = jChk.checked;
+  userTChecked = tChk.checked;
+  localStorage.setItem("userJChecked", String(userJChecked));
+  localStorage.setItem("userTChecked", String(userTChecked));
+}
+
+function renderSessionCards() {
+  buildSessions();
+  const keys = Object.keys(sessions);
+  const container = document.getElementById("session-cards");
+  container.innerHTML = "";
+  container.style.cssText = "width:100%;max-width:472px;display:flex;flex-direction:column;gap:12px;";
+
+  keys.forEach((name, i) => {
+    const main = sessions[name];
+    const { total: dur } = sessionPreviewTotal(name, includeWarmup, includeCooldown);
+    const icon = SESSION_ICONS[i % SESSION_ICONS.length];
+    const bookendNote = includeWarmup && includeCooldown ? "incl. warm-up & cool-down"
+      : includeWarmup ? "incl. warm-up"
+      : includeCooldown ? "incl. cool-down"
+      : "no warm-up/cool-down";
+    const estIntensity = estimateSessionIntensity(name);
+    const card = document.createElement("div");
+    card.className = "session-card" + (selectedSession === name ? " selected" : "");
+    card.innerHTML = `
+      <div class="session-icon">${icon}</div>
+      <div>
+        <div class="session-name">${name} ${estIntensity ? `<span class="chart-y-emoji" title="Estimated intensity">${FACE_SCALE[estIntensity - 1]}</span>` : ""}</div>
+        <div class="session-meta">${main.length} exercises · ${formatTime(dur)} (${bookendNote})</div>
+      </div>
+    `;
+    card.onclick = () => selectSession(name, card);
+    container.appendChild(card);
+  });
+
+  // Auto-select first
+  if (!selectedSession || !sessions[selectedSession]) {
+    selectedSession = keys[0];
+    const firstCard = container.querySelector(".session-card");
+    if (firstCard) firstCard.classList.add("selected");
+  }
+}
+
+function showSessions() {
+  phase = "idle";
+  running = false;
+  clearInterval(timerInterval);
+  document.getElementById("session-screen").style.display = "flex";
+  document.getElementById("timer-screen").style.display = "none";
+  document.getElementById("done-screen").style.display = "none";
+  document.getElementById("header-sub").textContent = "CHOOSE A SESSION";
+  // Always rebuild from allWorkouts — this is what makes the session
+  // list flexible: add/edit/remove entries in allWorkouts (or import a
+  // CSV) and the cards below update automatically, no HTML editing needed.
+  renderSessionCards();
+}
+
+// ─── START WORKOUT ───────────────────────────────────────────────
+function beginWorkout() {
+  if (!selectedSession || !sessions[selectedSession]) return;
+  // Unlock audio on iOS with a silent beep on user gesture
+  try { getAudioCtx().resume(); } catch(e) {}
+  if (!wakeLock) requestWakeLock();
+
+  sessionUsers = [];
+  if (userJChecked) sessionUsers.push("Joris");
+  if (userTChecked) sessionUsers.push("Tina");
+
+  const composed = composeSession(selectedSession, includeWarmup, includeCooldown);
+  currentWorkouts = composed.list; // main exercises kept by reference so the List tab can track progress
+  mainStartIdx = composed.mainStart;
+  mainEndIdx = composed.mainEnd;
+
+  document.getElementById("session-screen").style.display = "none";
+  document.getElementById("timer-screen").style.display = "flex";
+  document.getElementById("done-screen").style.display = "none";
+  renderProgressBar();
+  resetMidMotivations();
+  startPhase(0, "prep");
+}
+
+// The interval before the exercise at `idx` starts. Overridden to
+// SECTION_ANNOUNCE_SECS right at each section boundary (start of
+// Warm-up, start of Core, start of Cool-down), otherwise uses that
+// exercise's own prep value.
+function prepSecondsFor(idx, w) {
+  return isSectionStart(idx, mainStartIdx, mainEndIdx) ? SECTION_ANNOUNCE_SECS : (w.prep || 0);
+}
+
+// True if the exercise at this index is part of the warm-up or cool-down
+// (as opposed to the core/main session) — used to keep those sections
+// plain and uninterrupted, with motivational phrasing reserved for the
+// core workout only.
+function isBookend(idx) {
+  const item = currentWorkouts[idx];
+  const t = item ? item.type : undefined;
+  return t === "warmup" || t === "cooldown";
+}
+
+// Human-readable section name for step `idx`, used for the section
+// announcement ("Warm-up" / "Core" / "Cool-down") at each boundary.
+function sectionNameFor(idx) {
+  if (idx < mainStartIdx) return "Warm-up";
+  if (idx >= mainEndIdx) return "Cool-down";
+  return "Core";
+}
+
+// Splits a name like "Side Plank -- Switch Side" (dash can be "--" or "—")
+// into { main: "Side Plank", switchPart: "Switch Side" }. Only matches
+// when the part after the dash starts with "switch" — returns null for
+// ordinary names (including plain "Switch to other leg", which has no
+// dash and is handled separately as its own case).
+function parseSwitchName(name) {
+  const m = name.match(/^(.*?)\s*(?:--|—)\s*(switch.*)$/i);
+  return m ? { main: m[1].trim(), switchPart: m[2].trim() } : null;
+}
+
+// Shortens "Side Plank -- Switch Side" to just "Side Plank" for every
+// on-screen display of an exercise name (timer, next-up preview, list
+// tab). The full name is still used for CSV import/export and for the
+// separate mid-exercise spoken announcement (see parseSwitchName above).
+function displayName(name) {
+  const s = parseSwitchName(name);
+  return s ? s.main : name;
+}
+
+function startPhase(idx, ph) {
+  currentIdx = idx;
+  phase = ph;
+  const w = currentWorkouts[idx];
+  const secs = ph === "prep" ? prepSecondsFor(idx, w) : w.duration;
+  seconds = secs;
+  totalSeconds = secs;
+  running = true;
+
+  updateCircle();
+  updateExerciseInfo();
+  updateNextUp();
+  updateProgressBar();
+
+  // Speak exercise name during prep. Section boundaries (Warm-up, Core,
+  // Cool-down) get a single 10s "get ready" announcement that also names
+  // the first exercise of that section; the very first one additionally
+  // names the session itself. Otherwise warm-up/cool-down exercises get
+  // a plain, consistent "Next up" announcement, and motivational
+  // variation is reserved for the core session.
+  if (ph === "prep") {
+    const switchInfo = parseSwitchName(w.name);
+    const spokenName = switchInfo ? switchInfo.main : w.name;
+
+    if (/^switch/i.test(w.name)) {
+      // "Switch ..." exercises are quick mid-set transitions — just say
+      // the name, no "Get ready for"/"Next up"/motivational wrapping.
+      speak(w.name);
+    } else if (isSectionStart(idx, mainStartIdx, mainEndIdx)) {
+      const sectionName = sectionNameFor(idx);
+      if (idx === 0) {
+        speak(INTRO_MESSAGES.veryFirst(selectedSession, sectionName, spokenName));
+      } else {
+        speak(INTRO_MESSAGES.sectionStart(sectionName, spokenName));
+      }
+    } else if (isBookend(idx)) {
+      speak(INTRO_MESSAGES.bookend(spokenName));
+    } else {
+      speak(pickPhrase(PREP_PHRASES)(spokenName));
+    }
+  }
+
+  clearInterval(timerInterval);
+  timerInterval = setInterval(tick, 1000);
+}
+
+function tick() {
+  if (!running) return;
+  seconds--;
+
+  const w = currentWorkouts[currentIdx];
+  const bookend = isBookend(currentIdx);
+  const sectionStartPrep = phase === "prep" && isSectionStart(currentIdx, mainStartIdx, mainEndIdx);
+  const isSwitchEx = w && /^switch/i.test(w.name);
+
+  // Mid-workout motivations only apply to the core session
+  if (!bookend) checkMidMotivation();
+
+  // Countdown beeps at 3, 2, 1. Spoken numbers are reserved for the core
+  // session and for section-start announcements (Warm-up/Core/Cool-down)
+  // — during ordinary warm-up/cool-down reps the numbers would talk over
+  // the "Next up" announcement, so we stay silent there and just say
+  // "Go" once work starts instead (see advance()). "Switch..." exercises
+  // skip the countdown entirely — no beeps, no numbers, just "Go!".
+  if (seconds <= 3 && seconds > 0 && !(phase === "prep" && isSwitchEx)) {
+    playCountdownBeep(seconds);
+    if (!bookend || sectionStartPrep) {
+      if (seconds === 3) speak("Three");
+      else if (seconds === 2) speak("Two");
+      else if (seconds === 1) speak("One");
+    }
+  }
+
+  updateCircle();
+
+  // For "Main -- Switch Side"-style exercises, announce the second half
+  // at the halfway point of the exercise, minus 1 second — so it scales
+  // with however long that exercise runs.
+  const switchTarget = Math.max(0, Math.floor(totalSeconds / 2) - 1);
+  if (phase === "work" && totalSeconds - seconds === switchTarget) {
+    const switchInfo = w && parseSwitchName(w.name);
+    if (switchInfo) speak(switchInfo.switchPart);
+  }
+
+  if (seconds <= 0) {
+    clearInterval(timerInterval);
+    advance();
+  }
+}
+
+function advance() {
+  if (phase === "prep") {
+    const w = currentWorkouts[currentIdx];
+    const isSwitchEx = w && /^switch/i.test(w.name);
+    if (!isSwitchEx) playStartBeep();
+    speak("Go!");
+    startPhase(currentIdx, "work");
+  } else {
+    const next = currentIdx + 1;
+    if (next < currentWorkouts.length) {
+      startPhase(next, prepSecondsFor(next, currentWorkouts[next]) > 0 ? "prep" : "work");
+    } else {
+      finishWorkout();
+    }
+  }
+}
+
+// Computes one GOALS entry's metric for a user from the current
+// workoutHistory, optionally excluding one specific entry (object
+// reference) — used to compute the "before this session" baseline.
+function computeGoalValue(user, goal, excludeEntry) {
+  const relevant = workoutHistory.filter(h => h.user === user && h !== excludeEntry);
+  if (goal.type === "weekly_minutes") {
+    const thisWeekStart = startOfWeekMonday(new Date()).getTime();
+    const inWeek = relevant.filter(h => startOfWeekMonday(h.date).getTime() === thisWeekStart);
+    return inWeek.reduce((a, h) => a + (h.duration || 0), 0) / 60;
+  }
+  if (goal.type === "total_sessions") {
+    return relevant.length;
+  }
+  if (goal.type === "total_core_minutes") {
+    return relevant.reduce((a, h) => a + (h.coreDuration != null ? h.coreDuration : (h.duration || 0)), 0) / 60;
+  }
+  return 0;
+}
+
+// Checks every GOALS entry against the session that was JUST logged, and
+// renders a banner for any goal crossed by finishing this workout
+// specifically (before < threshold <= after) — not goals already met on
+// an earlier session. newEntryByUser maps each user to the history entry
+// object that was just pushed for them.
+function checkGoalsAndRender(users, newEntryByUser) {
+  const container = document.getElementById("achievement-messages");
+  const messages = [];
+
+  GOALS.forEach(goal => {
+    const reachedUsers = users.filter(u => {
+      const before = computeGoalValue(u, goal, newEntryByUser[u]);
+      const after = computeGoalValue(u, goal, null);
+      return before < goal.threshold && after >= goal.threshold;
+    });
+    if (!reachedUsers.length) return;
+    const names = reachedUsers.length > 1 ? `Both ${reachedUsers.join(" and ")}` : reachedUsers[0];
+    messages.push(goal.message(names));
+  });
+
+  container.innerHTML = messages.map(m => `<div class="achievement-banner">${m}</div>`).join("");
+}
+
+function finishWorkout() {
+  phase = "done";
+  running = false;
+  clearInterval(timerInterval);
+  speak("Workout complete! You absolutely crushed it! Amazing work! Don't forget to switch of your watch!");
+  playBeep(523, 0.1); setTimeout(() => playBeep(659, 0.1), 120); setTimeout(() => playBeep(784, 0.3), 240);
+  document.getElementById("timer-screen").style.display = "none";
+  document.getElementById("done-screen").style.display = "block";
+  const total = currentWorkouts.reduce((a, w, i) => a + prepSecondsFor(i, w) + w.duration, 0);
+
+  // Split that same total into warm-up / core / cool-down seconds, using
+  // the same section boundaries (mainStartIdx/mainEndIdx) the live
+  // announcements use — this is what feeds the stacked weekly chart.
+  let warmupSecs = 0, coreSecs = 0, cooldownSecs = 0;
+  currentWorkouts.forEach((w, i) => {
+    const secs = prepSecondsFor(i, w) + w.duration;
+    if (i < mainStartIdx) warmupSecs += secs;
+    else if (i >= mainEndIdx) cooldownSecs += secs;
+    else coreSecs += secs;
+  });
+
+  const users = sessionUsers.length ? sessionUsers : ["Joris"]; // safety fallback, shouldn't normally happen
+  document.getElementById("done-sub").textContent =
+    `${currentWorkouts.length} exercises · ${formatTime(total)} totaal · ${users.join(" & ")}`;
+
+  // Log this completed workout to history — one entry per selected person
+  // (counts immediately; the rating below is optional and attaches to
+  // that person's own entry).
+  lastEntryIndexByUser = {};
+  const newEntryByUser = {};
+  users.forEach(u => {
+    const entry = {
+      date: new Date().toISOString(),
+      session: selectedSession,
+      duration: total,
+      coreDuration: coreSecs,
+      warmupDuration: warmupSecs,
+      cooldownDuration: cooldownSecs,
+      rating: null,
+      user: u
+    };
+    workoutHistory.push(entry);
+    newEntryByUser[u] = entry;
+    lastEntryIndexByUser[u] = workoutHistory.length - 1;
+  });
+  saveHistoryToStorage();
+  checkGoalsAndRender(users, newEntryByUser);
+  renderEvalUI(users);
+  updateStatsDisplay();
+}
+
+// Builds one evaluation card per person who took part in this session.
+// With one person it's unlabeled; with both, each card is tagged so
+// it's clear whose rating is whose.
+function renderEvalUI(users) {
+  currentRatings = {};
+  const container = document.getElementById("eval-container");
+  container.innerHTML = users.map(u => `
+    <div class="eval-box">
+      <div class="eval-label">${users.length > 1 ? `💪 ${u} — ` : ""}HOW HEAVY DID THAT FEEL?</div>
+      <div class="eval-scale-labels"><span>LIGHT</span><span>HEAVY</span></div>
+      <div class="sweat-row">
+        ${[1,2,3,4,5].map(v => `<span class="sweat" data-user="${u}" data-v="${v}">${FACE_SCALE[v-1]}</span>`).join("")}
+      </div>
+      <button class="btn-save-eval" data-user="${u}">SAVE RATING</button>
+      <div class="eval-saved" id="eval-saved-${u}" style="display:none">✓ Saved — nice work!</div>
+    </div>
+  `).join("");
+}
+
+// Delegated listener (attached once) — handles clicks for however many
+// eval cards are currently rendered (one or two, depending on who trained).
+document.getElementById("eval-container").addEventListener("click", e => {
+  const sweat = e.target.closest(".sweat");
+  if (sweat) {
+    const user = sweat.dataset.user;
+    const rating = parseInt(sweat.dataset.v);
+    currentRatings[user] = rating;
+    document.querySelectorAll(`.sweat[data-user="${user}"]`).forEach(s => {
+      s.classList.toggle("filled", parseInt(s.dataset.v) === rating);
+    });
+    return;
+  }
+  const saveBtn = e.target.closest(".btn-save-eval");
+  if (saveBtn) saveEvaluationForUser(saveBtn.dataset.user);
+});
+
+function saveEvaluationForUser(user) {
+  const rating = currentRatings[user];
+  const idx = lastEntryIndexByUser[user];
+  if (!rating || idx === undefined || !workoutHistory[idx]) return;
+  workoutHistory[idx].rating = rating;
+  saveHistoryToStorage();
+  updateStatsDisplay();
+  const savedEl = document.getElementById(`eval-saved-${user}`);
+  if (savedEl) savedEl.style.display = "block";
+  const btn = document.querySelector(`.btn-save-eval[data-user="${user}"]`);
+  if (btn) btn.style.display = "none";
+}
+
+function togglePause() {
+  running = !running;
+  const btn = document.getElementById("btn-main");
+  if (running) {
+    btn.textContent = "⏸ PAUSE";
+    btn.className = "btn-main pause";
+    timerInterval = setInterval(tick, 1000);
+  } else {
+    btn.textContent = "▶ RESUME";
+    btn.className = "btn-main resume";
+    clearInterval(timerInterval);
+  }
+}
+
+function stopWorkout() {
+  clearInterval(timerInterval);
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  showSessions();
+}
+
+// ─── UI UPDATES ──────────────────────────────────────────────────
+const CIRC = 2 * Math.PI * 110;
+
+function updateCircle() {
+  const arc = document.getElementById("timer-arc");
+  const txt = document.getElementById("timer-text");
+  const phLabel = document.getElementById("timer-phase");
+  const svg = document.getElementById("timer-svg");
+  const ring = document.getElementById("pulse-ring");
+
+  const progress = totalSeconds > 0 ? seconds / totalSeconds : 1;
+  arc.setAttribute("stroke-dasharray", `${CIRC * progress} ${CIRC}`);
+  txt.textContent = formatTime(seconds);
+
+  let color, glow, label;
+  if (phase === "prep") {
+    color = "#F59E0B"; glow = "rgba(245,158,11,0.4)"; label = "GET READY";
+    ring.className = "pulse-ring yellow";
+  } else if (seconds <= 3 && seconds > 0) {
+    color = "#EF4444"; glow = "rgba(239,68,68,0.45)"; label = "GO";
+    ring.className = "pulse-ring red";
+  } else {
+    color = "#10B981"; glow = "rgba(16,185,129,0.4)"; label = "GO";
+    ring.className = "pulse-ring";
+  }
+
+  arc.setAttribute("stroke", color);
+  phLabel.setAttribute("fill", color);
+  phLabel.textContent = label;
+  svg.style.filter = `drop-shadow(0 0 24px ${glow})`;
+}
+
+function updateExerciseInfo() {
+  const w = currentWorkouts[currentIdx];
+  let blockLabel, posText;
+  if (w.type === "warmup") {
+    blockLabel = "WARM-UP";
+    posText = `${currentIdx + 1} / ${WARMUP.length}`;
+  } else if (w.type === "cooldown") {
+    blockLabel = "COOL-DOWN";
+    posText = `${currentIdx - mainEndIdx + 1} / ${COOLDOWN.length}`;
+  } else {
+    blockLabel = selectedSession;
+    const mainCount = mainEndIdx - mainStartIdx;
+    posText = `${currentIdx - mainStartIdx + 1} / ${mainCount}`;
+  }
+  document.getElementById("ex-count").textContent = `${posText} — ${blockLabel}`;
+  document.getElementById("ex-name").textContent = displayName(w.name);
+  const sub = document.getElementById("ex-sub");
+  if (phase === "prep") {
+    sub.textContent = "Get ready…";
+    sub.style.color = "#F59E0B";
+  } else {
+    sub.textContent = `${w.duration}s exercise`;
+    sub.style.color = "var(--muted)";
+  }
+  document.getElementById("header-sub").textContent = blockLabel.toUpperCase() + " · LET'S GO";
+}
+
+function updateNextUp() {
+  const nextEl = document.getElementById("next-up");
+  const next = currentWorkouts[currentIdx + 1];
+  if (next) {
+    nextEl.style.display = "flex";
+    document.getElementById("next-name").textContent = displayName(next.name);
+    document.getElementById("next-dur").textContent = next.duration + "s";
+  } else {
+    nextEl.style.display = "none";
+  }
+}
+
+function renderProgressBar() {
+  const bar = document.getElementById("progress-bar");
+  bar.innerHTML = currentWorkouts.map((_, i) =>
+    `<div class="prog-dot" id="pdot-${i}" style="background:#E5E7EB"></div>`
+  ).join("");
+}
+
+function updateProgressBar() {
+  currentWorkouts.forEach((_, i) => {
+    const dot = document.getElementById("pdot-" + i);
+    if (!dot) return;
+    if (i < currentIdx) dot.style.background = "#10B981";
+    else if (i === currentIdx) dot.style.background = phase === "prep" ? "#F59E0B" : "#10B981";
+    else dot.style.background = "#E5E7EB";
+  });
+}
+
+// ─── LIST VIEW ───────────────────────────────────────────────────
+function renderStaticBlock(container, items, headerText, autoExpand) {
+  const blockIntensity = estimateIntensityForList(items);
+  const header = document.createElement("div");
+  header.className = "list-session-header" + (autoExpand ? " expanded" : "");
+  header.innerHTML = `<span class="chevron">▶</span><span>${headerText} ${blockIntensity ? FACE_SCALE[blockIntensity - 1] : ""}</span><span class="list-session-count">${items.length} exercises</span>`;
+  container.appendChild(header);
+
+  const group = document.createElement("div");
+  group.className = "list-session-group" + (autoExpand ? " expanded" : "");
+  container.appendChild(group);
+  header.onclick = () => {
+    header.classList.toggle("expanded");
+    group.classList.toggle("expanded");
+  };
+
+  items.forEach((w, i) => {
+    const item = document.createElement("div");
+    item.className = "list-item";
+    item.innerHTML = `
+      <div class="list-num">${i + 1}</div>
+      <div>
+        <div class="list-name">${displayName(w.name)} ${exerciseIntensityBadge(w.name)}</div>
+        <div class="list-meta">Prep: ${w.prep}s</div>
+      </div>
+      <div class="list-dur">${w.duration}s</div>
+    `;
+    group.appendChild(item);
+  });
+}
+
+function renderList() {
+  const container = document.getElementById("list-items");
+  container.innerHTML = "";
+  container.style.cssText = "display:flex;flex-direction:column;gap:10px;width:100%;";
+
+  const warmupRunning = phase !== "idle" && phase !== "done" && currentIdx < mainStartIdx;
+  const cooldownRunning = phase !== "idle" && phase !== "done" && currentIdx >= mainEndIdx;
+
+  renderStaticBlock(container, WARMUP, "🔥 WARM-UP · EVERY SESSION", warmupRunning);
+
+  let lastSession = null;
+  let sessionNum = 0;
+  let group = null;        // the currently-open <div> of exercise items for this session
+  let countEl = null;      // that session's "N exercises" badge, updated as we go
+  let sessionExerciseCount = 0;
+  allWorkouts.forEach((w) => {
+    if (w.session !== lastSession) {
+      lastSession = w.session;
+      sessionNum = 0;
+
+      // Auto-expand only the session currently mid-workout, so progress
+      // highlighting stays visible; every other session starts collapsed.
+      const isRunningThisSession = phase !== "idle" && phase !== "done" && selectedSession === w.session;
+
+      const sessionIntensity = estimateSessionIntensity(w.session);
+      const header = document.createElement("div");
+      header.className = "list-session-header" + (isRunningThisSession ? " expanded" : "");
+      header.innerHTML = `<span class="chevron">▶</span><span>${(w.session || "ALGEMEEN").toUpperCase()} ${sessionIntensity ? FACE_SCALE[sessionIntensity - 1] : ""}</span><span class="list-session-count"></span>`;
+      container.appendChild(header);
+      countEl = header.querySelector(".list-session-count");
+
+      const sessionGroup = document.createElement("div"); // fresh binding per session, for the closure below
+      sessionGroup.className = "list-session-group" + (isRunningThisSession ? " expanded" : "");
+      container.appendChild(sessionGroup);
+      header.onclick = () => {
+        header.classList.toggle("expanded");
+        sessionGroup.classList.toggle("expanded");
+      };
+
+      group = sessionGroup; // shared mutable reference used below to append this session's items
+      sessionExerciseCount = 0;
+    }
+    sessionNum++;
+    sessionExerciseCount++;
+    countEl.textContent = sessionExerciseCount + " exercises";
+
+    const runIdx = currentWorkouts.indexOf(w);
+    const isActive = phase !== "idle" && phase !== "done" &&
+      selectedSession === w.session && runIdx !== -1 && runIdx === currentIdx;
+    const isDone = phase !== "idle" &&
+      selectedSession === w.session && runIdx !== -1 && runIdx < currentIdx;
+
+    const item = document.createElement("div");
+    item.className = "list-item" + (isActive ? " active" : "") + (isDone ? " done-item" : "");
+    const numClass = isDone ? "list-num done-num" : isActive ? "list-num active-num" : "list-num";
+    const numContent = isDone ? "✓" : sessionNum;
+    item.innerHTML = `
+      <div class="${numClass}">${numContent}</div>
+      <div>
+        <div class="list-name">${displayName(w.name)} ${exerciseIntensityBadge(w.name)}</div>
+        <div class="list-meta">Prep: ${w.prep}s</div>
+      </div>
+      <div class="list-dur">${w.duration}s</div>
+    `;
+    group.appendChild(item);
+  });
+
+  renderStaticBlock(container, COOLDOWN, "🧊 COOL-DOWN · EVERY SESSION", cooldownRunning);
+}
+
+// ─── TABS ────────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById("view-timer").style.display = tab === "timer" ? "block" : "none";
+  document.getElementById("view-list").style.display = tab === "list" ? "block" : "none";
+  document.getElementById("view-stats").style.display = tab === "stats" ? "block" : "none";
+  document.getElementById("view-exercises").style.display = tab === "exercises" ? "block" : "none";
+  document.getElementById("view-history").style.display = tab === "history" ? "block" : "none";
+  document.getElementById("tab-timer").className = "tab" + (tab === "timer" ? " active" : "");
+  document.getElementById("tab-list").className = "tab" + (tab === "list" ? " active" : "");
+  document.getElementById("tab-stats").className = "tab" + (tab === "stats" ? " active" : "");
+  document.getElementById("tab-exercises").className = "tab" + (tab === "exercises" ? " active" : "");
+  document.getElementById("tab-history").className = "tab" + (tab === "history" ? " active" : "");
+  if (tab === "list") renderList();
+  if (tab === "stats") updateStatsDisplay();
+  if (tab === "exercises") renderExerciseGuide();
+  if (tab === "history") renderHistoryEditor();
+}
+
+// ─── EXERCISE GUIDE (new tab) ──────────────────────────────────────
+// Strips both the "-- Switch Side" suffix (see parseSwitchName) and any
+// "First/Second/Third Cycle - " prefix used for repeated circuit rounds,
+// so e.g. "First Cycle - Burpees" and "Third Cycle - Burpees" both match
+// the single "Burpees" entry below instead of needing three entries.
+function canonicalExerciseName(name) {
+  const split = parseSwitchName(name);
+  let n = split ? split.main : name;
+  n = n.replace(/^(First|Second|Third|Fourth)\s+Cycle\s*-\s*/i, "").trim();
+  return n;
+}
+
+function categoryIcon(name) {
+  const n = name.toLowerCase();
+  if (/push|dip/.test(n)) return "💪";
+  if (/plank|crunch|bird dog|superman|swimmer|windscreen|scissor|v sit/.test(n)) return "🧘";
+  if (/jump|burpee|mountain climber|high knee|march|shuffle|hop|skater|box|thrust/.test(n)) return "🤸";
+  if (/stretch|roll|hug|rotation|drop & touch/.test(n)) return "🙆";
+  if (/squat|lunge|step-up|bridge|deadlift/.test(n)) return "🦵";
+  return "🏋️";
+}
+
+
+// Estimated intensity (1-5) for ANY list of exercise objects, weighted by
+// each exercise's duration. Falls back to 3 (moderate) for any exercise
+// missing from EXERCISE_INFO. Shared by sessions, and the warm-up/
+// cool-down blocks on the List tab.
+function estimateIntensityForList(list) {
+  if (!list || !list.length) return null;
+  let weightedSum = 0, totalWeight = 0;
+  list.forEach(w => {
+    const canon = canonicalExerciseName(w.name).toLowerCase();
+    const info = EXERCISE_INFO[canon];
+    const intensity = info ? info.intensity : 3;
+    const weight = w.duration || 1;
+    weightedSum += intensity * weight;
+    totalWeight += weight;
+  });
+  if (!totalWeight) return null;
+  return Math.max(1, Math.min(5, Math.round(weightedSum / totalWeight)));
+}
+
+// Estimated intensity (1-5) for a session's CORE exercises only — warm-up/
+// cool-down are shared by every session so they wouldn't actually help
+// tell sessions apart.
+function estimateSessionIntensity(sessionName) {
+  return estimateIntensityForList(sessions[sessionName]);
+}
+
+// Per-exercise intensity face, for inline display next to a single item.
+function exerciseIntensityBadge(name) {
+  const canon = canonicalExerciseName(name).toLowerCase();
+  const info = EXERCISE_INFO[canon];
+  const intensity = info ? info.intensity : 3;
+  return `<span class="chart-y-emoji" title="Estimated intensity">${FACE_SCALE[intensity - 1]}</span>`;
+}
+
+function renderExerciseGuide() {
+  const container = document.getElementById("exercise-list");
+  const query = (document.getElementById("exercise-search").value || "").trim().toLowerCase();
+
+  const all = [...WARMUP, ...allWorkouts, ...COOLDOWN];
+  const seen = new Map(); // canonical name -> true, to list each exercise once
+  all.forEach(w => {
+    const canon = canonicalExerciseName(w.name);
+    if (!seen.has(canon)) seen.set(canon, true);
+  });
+
+  const names = [...seen.keys()]
+    .filter(n => !query || n.toLowerCase().includes(query))
+    .sort((a, b) => a.localeCompare(b));
+
+  if (!names.length) {
+    container.innerHTML = `<div class="exercise-empty">No exercises match "${query}".</div>`;
+    return;
+  }
+
+  container.innerHTML = names.map(name => {
+    const info = EXERCISE_INFO[name.toLowerCase()];
+    const desc = info ? info.desc : "Move with control, keep your core engaged, and breathe steadily throughout.";
+    const intensity = info ? info.intensity : 3;
+    const icon = categoryIcon(name);
+    const link = `https://www.google.com/search?q=${encodeURIComponent(name + " exercise how to perform")}`;
+    return `
+      <div class="exercise-card">
+        <div class="exercise-icon">${icon}</div>
+        <div class="exercise-body">
+          <div class="exercise-name">${name} <span class="chart-y-emoji" title="Estimated intensity">${FACE_SCALE[intensity - 1]}</span></div>
+          <div class="exercise-desc">${desc}</div>
+          <a class="exercise-link" href="${link}" target="_blank" rel="noopener">🔗 More info &amp; pictures</a>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// ─── CSV IMPORT ──────────────────────────────────────────────────
+function handleCSV(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const lines = ev.target.result.split(/\r?\n/).filter(l => l.trim());
+      const parsed = [];
+      // Skip header row if first col is not a number
+      const startRow = isNaN(parseInt(lines[0].split(",")[0])) ? 1 : 0;
+      for (let i = startRow; i < lines.length; i++) {
+        // Handle quoted CSV fields
+        const cols = parseCSVLine(lines[i]);
+        if (cols.length < 3) continue;
+        const prep = parseInt(cols[0]);
+        const name = cols[1].trim();
+        const duration = parseInt(cols[2]);
+        const session = (cols[3] || "Algemeen").trim();
+        if (!name || isNaN(prep) || isNaN(duration)) continue;
+        parsed.push({ prep, name, duration, session });
+      }
+      if (parsed.length === 0) {
+        showError("Geen geldige rijen. Formaat: prep_s, naam, duur_s, sessie");
+        return;
+      }
+      allWorkouts = parsed;
+      hideError();
+      selectedSession = null;
+      showSessions();
+      switchTab("timer");
+    } catch(err) {
+      showError("Fout bij lezen CSV: " + err.message);
+    }
+  };
+  reader.readAsText(file, "UTF-8");
+  e.target.value = "";
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = "", inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQuotes = !inQuotes; }
+    else if (c === ',' && !inQuotes) { result.push(cur); cur = ""; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result;
+}
+
+function showError(msg) { showMessage(msg, false); }
+
+function showMessage(msg, isSuccess) {
+  const el = document.getElementById("error-banner");
+  el.textContent = (isSuccess ? "✅ " : "⚠️ ") + msg;
+  el.className = "error-banner" + (isSuccess ? " success" : "");
+  el.style.display = "block";
+  setTimeout(() => el.style.display = "none", 4000);
+}
+function hideError() {
+  document.getElementById("error-banner").style.display = "none";
+}
+
+// ─── STATS ───────────────────────────────────────────────────────
+function formatDuration(totalSecs) {
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+// Returns the Monday (start of ISO week) for a given date, as a Date at midnight local time.
+function weekStart(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay(); // 0=Sun..6=Sat
+  const diffToMonday = (day === 0 ? -6 : 1 - day);
+  d.setDate(d.getDate() + diffToMonday);
+  return d;
+}
+function weekKey(date) {
+  return weekStart(date).toISOString().slice(0, 10);
+}
+
+// A week only counts toward the streak once at least 2 sessions were
+// logged in it. The current (still in-progress) week is skipped rather
+// than breaking the streak, since it may still be completed.
+function calcWeekStreak(history) {
+  if (!history.length) return 0;
+  const counts = {};
+  history.forEach(h => {
+    const k = weekKey(h.date);
+    counts[k] = (counts[k] || 0) + 1;
+  });
+
+  let cursor = weekStart(new Date());
+  const currentKey = cursor.toISOString().slice(0, 10);
+  if (!counts[currentKey] || counts[currentKey] < 2) {
+    // This week hasn't hit 2 sessions yet — don't count it, but don't
+    // break the streak either; start checking from last week instead.
+    cursor.setDate(cursor.getDate() - 7);
+  }
+
+  let streak = 0;
+  let key = cursor.toISOString().slice(0, 10);
+  while (counts[key] >= 2) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 7);
+    key = cursor.toISOString().slice(0, 10);
+  }
+  return streak;
+}
+
+function switchStatsUser(user) {
+  statsUser = user;
+  document.querySelectorAll(".stats-user-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.user === user);
+  });
+  document.querySelectorAll(".stats-panel").forEach(p => {
+    p.classList.toggle("active", p.dataset.user === user);
+  });
+  updateStatsDisplay();
+}
+
+function historyForUser(user) {
+  return workoutHistory.filter(h => h.user === user);
+}
+
+function historyForStatsUser() {
+  return historyForUser(statsUser);
+}
+
+function updateStatsDisplay() {
+  // Always refresh both people's panels — on iPad-width screens both are
+  // visible side by side at once, and on phones this is cheap enough to
+  // just always do regardless of which one is currently active.
+  ["Joris", "Tina"].forEach(user => {
+    const userHistory = historyForUser(user);
+    document.getElementById(`stat-total-${user}`).textContent = userHistory.length;
+    const totalSecs = userHistory.reduce((a, h) => a + (h.duration || 0), 0);
+    document.getElementById(`stat-time-${user}`).textContent = formatDuration(totalSecs);
+    document.getElementById(`stat-streak-${user}`).textContent = calcWeekStreak(userHistory) + "🔥";
+    renderWorkloadChart(user);
+    renderWeeklyMinutesChart(user);
+    renderSessionPieChart(user);
+  });
+}
+
+// ─── WORKLOAD TREND CHART (SVG bar chart of ratings, 1=light..5=heavy) ──
+// Graduated face scale for the 1-5 "how heavy did that feel" rating —
+// shared between the rating buttons on the done screen and the
+// workload trend chart's y-axis.
+const FACE_SCALE = ["😌", "🙂", "😅", "😓", "🥵"];
+
+function ratingColor(r) {
+  // green (light) -> yellow -> orange -> red (heavy)
+  return ["#10B981", "#84CC16", "#F59E0B", "#F97316", "#DC2626"][r - 1] || "#D1D5DB";
+}
+
+function renderWorkloadChart(user) {
+  const container = document.getElementById(`workload-chart-${user}`);
+  const rated = historyForUser(user).filter(h => h.rating); // every rated session for this person, oldest to newest
+  if (!rated.length) {
+    container.innerHTML = `<div class="chart-empty">${user} hasn't rated a workout yet — ratings will start showing the workload trend here.</div>`;
+    return;
+  }
+
+  // Same H/padTop/padBottom/axis-width as renderWeeklyMinutesChart below,
+  // so the two charts' y-axes line up visually when viewed one after the other.
+  const H = 150;
+  const AXIS_W = 26;               // fixed, never-scrolling y-axis column
+  const padL2 = 10, padR = 16, padTop = 26, padBottom = 22;
+  const chartH = H - padTop - padBottom;
+  const n = rated.length;
+  const barW = 14, gap = 20; // fixed per-point spacing — the chart grows wider and scrolls instead of squeezing points
+  const chartW = n * (barW + gap);
+  const scrollW = padL2 + chartW + padR;
+
+  // Y-axis: one face per rating level (1 = 😌 at the bottom, 5 = 🥵 at the top) —
+  // drawn in its own small fixed SVG so it stays visible while the data scrolls.
+  let yAxis = "";
+  for (let v = 1; v <= 5; v++) {
+    const gy = padTop + chartH - (v / 5) * chartH;
+    yAxis += `<text x="${AXIS_W - 6}" y="${(gy + 4).toFixed(1)}" text-anchor="end" class="chart-y-emoji">${FACE_SCALE[v - 1]}</text>`;
+  }
+
+  // Points are placed by their center x (same spacing as bars used), y by rating height
+  const points = rated.map((h, i) => {
+    const x = padL2 + i * (barW + gap) + barW / 2;
+    const y = padTop + chartH - (h.rating / 5) * chartH;
+    return { x, y, h };
+  });
+
+  const polylinePoints = points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+
+  // Trailing moving average (last 3 sessions, fewer at the very start) —
+  // this is what actually shows the underlying evolution when heavy and
+  // light sessions alternate a lot, since it smooths out that zig-zag.
+  const TREND_WINDOW = 3;
+  const trendPoints = points.map((p, i) => {
+    const slice = rated.slice(Math.max(0, i - TREND_WINDOW + 1), i + 1);
+    const avg = slice.reduce((a, h) => a + h.rating, 0) / slice.length;
+    const y = padTop + chartH - (avg / 5) * chartH;
+    return { x: p.x, y };
+  });
+  const trendPolyline = trendPoints.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+
+  let dots = "";
+  points.forEach((p) => {
+    const h = p.h;
+    const d = new Date(h.date);
+    const label = `${d.getDate()}/${d.getMonth() + 1}`;
+    dots += `
+      <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="5" fill="${ratingColor(h.rating)}" />
+      <text x="${p.x.toFixed(1)}" y="${(p.y - 10).toFixed(1)}" text-anchor="middle" class="chart-bar-value">${h.rating}</text>
+      <text x="${p.x.toFixed(1)}" y="${H - 6}" text-anchor="middle" class="chart-bar-label">${label}</text>
+    `;
+  });
+
+  const TREND_COLOR = "#6366F1";
+  const legend = `
+    <div class="pie-legend-row" style="justify-content:center; gap:14px; margin-top:4px;">
+      <span style="display:flex; align-items:center; gap:4px;"><span style="width:14px; height:0; border-top:1.5px dashed var(--muted);"></span>Per session</span>
+      <span style="display:flex; align-items:center; gap:4px;"><span style="width:14px; height:0; border-top:2.5px solid ${TREND_COLOR};"></span>3-session trend</span>
+    </div>
+  `;
+
+  container.innerHTML = `
+    <div style="display:flex; align-items:flex-start;">
+      <svg width="${AXIS_W}" height="${H}" style="flex-shrink:0; display:block;">
+        ${yAxis}
+      </svg>
+      <div class="chart-scroll" id="workload-scroll-${user}">
+        <svg width="${scrollW}" height="${H}">
+          <line x1="${padL2}" y1="${padTop + chartH}" x2="${scrollW - padR}" y2="${padTop + chartH}" stroke="var(--border)" stroke-width="1" />
+          <polyline points="${polylinePoints}" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="3,3" />
+          <polyline points="${trendPolyline}" fill="none" stroke="${TREND_COLOR}" stroke-width="2.5" />
+          ${dots}
+        </svg>
+      </div>
+    </div>
+    ${legend}
+  `;
+
+  // Start scrolled to the right, showing the most recent session by default.
+  const scrollEl = document.getElementById(`workload-scroll-${user}`);
+  if (scrollEl) scrollEl.scrollLeft = scrollEl.scrollWidth;
+}
+
+// ─── WEEKLY MINUTES CHART (bar per Monday-start week) ─────────────
+// Returns midnight-Monday of the week containing date `d`.
+function startOfWeekMonday(d) {
+  const date = new Date(d);
+  date.setHours(0, 0, 0, 0);
+  const day = date.getDay(); // 0=Sun, 1=Mon, ... 6=Sat
+  const diff = (day === 0 ? -6 : 1) - day; // shift back to Monday
+  date.setDate(date.getDate() + diff);
+  return date;
+}
+
+// Colors for the 3 stacked segments — core at the bottom, then warm-up,
+// then cool-down on top.
+const SECTION_COLORS = { core: "#10B981", warmup: "#F59E0B", cooldown: "#3B82F6" };
+
+function renderWeeklyMinutesChart(user) {
+  const container = document.getElementById(`weekly-chart-${user}`);
+  const userHistory = historyForUser(user);
+  if (!userHistory.length) {
+    container.innerHTML = `<div class="chart-empty">No sessions yet for ${user} — weekly totals will show up here.</div>`;
+    return;
+  }
+
+  // Group sessions into Monday-start weeks, summing minutes per section
+  // (core/warm-up/cool-down) and counting sessions per week. Older
+  // history entries saved before the breakdown existed count entirely
+  // as core minutes, since that's the bulk of any session anyway.
+  const weeks = new Map(); // key: week-start date string -> { weekStart, core, warmup, cooldown, sessions }
+  userHistory.forEach(h => {
+    const weekStart = startOfWeekMonday(h.date);
+    const key = weekStart.toISOString().slice(0, 10);
+    if (!weeks.has(key)) weeks.set(key, { weekStart, core: 0, warmup: 0, cooldown: 0, sessions: 0 });
+    const entry = weeks.get(key);
+    const hasBreakdown = h.coreDuration != null || h.warmupDuration != null || h.cooldownDuration != null;
+    if (hasBreakdown) {
+      entry.core += (h.coreDuration || 0) / 60;
+      entry.warmup += (h.warmupDuration || 0) / 60;
+      entry.cooldown += (h.cooldownDuration || 0) / 60;
+    } else {
+      entry.core += (h.duration || 0) / 60; // older entry, no breakdown saved — count as core
+    }
+    entry.sessions += 1;
+  });
+
+  const sorted = Array.from(weeks.values()).sort((a, b) => a.weekStart - b.weekStart);
+  const recent = sorted.slice(-8); // most recent 8 weeks for this person
+
+  const W = 320, H = 150;
+  const padL = 26, padR = 8, padTop = 26, padBottom = 22;
+  const chartW = W - padL - padR;
+  const chartH = H - padTop - padBottom;
+  const n = recent.length;
+  const gap = 10;
+  const barW = Math.max(14, (chartW - gap * (n - 1)) / n);
+  const maxMinutes = Math.max(...recent.map(w => w.core + w.warmup + w.cooldown), 1);
+
+  // Round the axis top up to the next 10-minute step so gridlines land on
+  // clean values (10, 20, 30…) and bars scale against that same top. The
+  // target line stays visible even on a light week, so the axis always
+  // extends at least that far.
+  const GRID_STEP = 10;
+  const axisMax = Math.max(GRID_STEP, CHART_WEEKLY_TARGET, Math.ceil(maxMinutes / GRID_STEP) * GRID_STEP);
+
+  let grid = "";
+  for (let v = GRID_STEP; v <= axisMax; v += GRID_STEP) {
+    const gy = padTop + chartH - (v / axisMax) * chartH;
+    grid += `
+      <line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W - padR}" y2="${gy.toFixed(1)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="2,3" />
+      <text x="${(padL - 6).toFixed(1)}" y="${(gy + 3).toFixed(1)}" text-anchor="end" class="chart-bar-label">${v}</text>
+    `;
+  }
+
+  // Target reference line — distinct from the gridlines, with its own label.
+  const targetY = padTop + chartH - (CHART_WEEKLY_TARGET / axisMax) * chartH;
+  grid += `
+    <line x1="${padL}" y1="${targetY.toFixed(1)}" x2="${W - padR}" y2="${targetY.toFixed(1)}" stroke="#EF4444" stroke-width="1.5" stroke-dasharray="5,3" />
+    <text x="${W - padR}" y="${(targetY - 4).toFixed(1)}" text-anchor="end" class="chart-bar-label" style="fill:#EF4444; font-weight:700;">🎯 ${CHART_WEEKLY_TARGET}m goal</text>
+  `;
+
+  let bars = "";
+  recent.forEach((w, i) => {
+    const x = padL + i * (barW + gap);
+    const cx = x + barW / 2;
+    const total = w.core + w.warmup + w.cooldown;
+
+    // Stack bottom-up: core first, then warm-up, then cool-down on top.
+    let cumulative = 0;
+    [["core", w.core], ["warmup", w.warmup], ["cooldown", w.cooldown]].forEach(([section, minutes]) => {
+      if (minutes <= 0) return;
+      const segH = (minutes / axisMax) * chartH;
+      const segY = padTop + chartH - ((cumulative + minutes) / axisMax) * chartH;
+      cumulative += minutes;
+      bars += `<rect x="${x.toFixed(1)}" y="${segY.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(1, segH).toFixed(1)}" fill="${SECTION_COLORS[section]}" />`;
+    });
+
+    const topY = padTop + chartH - (total / axisMax) * chartH;
+    const label = `${w.weekStart.getDate()}/${w.weekStart.getMonth() + 1}`;
+    bars += `
+      <text x="${cx.toFixed(1)}" y="${(topY - 8).toFixed(1)}" text-anchor="middle" class="chart-bar-value">${w.sessions}</text>
+      <text x="${cx.toFixed(1)}" y="${(H - 6).toFixed(1)}" text-anchor="middle" class="chart-bar-label">${label}</text>
+    `;
+  });
+
+  const legend = `
+    <div class="pie-legend-row" style="justify-content:center; gap:14px; margin-top:4px;">
+      <span style="display:flex; align-items:center; gap:4px;"><span class="pie-legend-dot" style="background:${SECTION_COLORS.core}"></span>Core</span>
+      <span style="display:flex; align-items:center; gap:4px;"><span class="pie-legend-dot" style="background:${SECTION_COLORS.warmup}"></span>Warm-up</span>
+      <span style="display:flex; align-items:center; gap:4px;"><span class="pie-legend-dot" style="background:${SECTION_COLORS.cooldown}"></span>Cool-down</span>
+    </div>
+  `;
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block;">
+      ${grid}
+      <line x1="${padL}" y1="${padTop + chartH}" x2="${W - padR}" y2="${padTop + chartH}" stroke="var(--border)" stroke-width="1" />
+      ${bars}
+    </svg>
+    ${legend}
+  `;
+}
+
+// ─── SESSION FREQUENCY CHART (donut: how many times each session was done) ──
+// A fixed color palette, cycled through if someone's tried more distinct
+// sessions than there are colors.
+const PIE_COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#14B8A6", "#F97316"];
+
+function renderSessionPieChart(user) {
+  const container = document.getElementById(`session-pie-${user}`);
+  const userHistory = historyForUser(user);
+  if (!userHistory.length) {
+    container.innerHTML = `<div class="chart-empty">No sessions yet for ${user} — this will show which sessions you do most.</div>`;
+    return;
+  }
+
+  // Count how many times each session name appears, then sort most-done first.
+  const counts = new Map();
+  userHistory.forEach(h => counts.set(h.session, (counts.get(h.session) || 0) + 1));
+  const rows = Array.from(counts.entries())
+    .map(([session, count]) => ({ session, count }))
+    .sort((a, b) => b.count - a.count);
+
+  const total = rows.reduce((a, r) => a + r.count, 0);
+
+  // Donut chart drawn as one circle per slice, using stroke-dasharray to
+  // show only that slice's share of the circumference — no SVG arc-path
+  // math needed. -90deg start rotation makes the first slice begin at
+  // the top instead of the 3 o'clock position.
+  const SIZE = 140, R = 52, CX = SIZE / 2, CY = SIZE / 2;
+  const circumference = 2 * Math.PI * R;
+  let offset = 0;
+  let slices = "";
+  rows.forEach((r, i) => {
+    const share = r.count / total;
+    const segLen = share * circumference;
+    const color = PIE_COLORS[i % PIE_COLORS.length];
+    slices += `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${color}" stroke-width="22"
+      stroke-dasharray="${segLen.toFixed(2)} ${(circumference - segLen).toFixed(2)}"
+      stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 ${CX} ${CY})" />`;
+    offset += segLen;
+  });
+
+  const legend = rows.map((r, i) => `
+    <div class="pie-legend-row">
+      <span class="pie-legend-dot" style="background:${PIE_COLORS[i % PIE_COLORS.length]}"></span>
+      <span class="pie-legend-name">${r.session}</span>
+      <span class="pie-legend-count">${r.count}×</span>
+    </div>
+  `).join("");
+
+  container.innerHTML = `
+    <div class="pie-wrap">
+      <svg viewBox="0 0 ${SIZE} ${SIZE}" style="width:${SIZE}px; height:${SIZE}px; flex-shrink:0;">
+        ${slices}
+        <text x="${CX}" y="${CY - 4}" text-anchor="middle" class="chart-bar-value" style="font-size:16px;">${total}</text>
+        <text x="${CX}" y="${CY + 12}" text-anchor="middle" class="chart-bar-label">total</text>
+      </svg>
+      <div class="pie-legend">${legend}</div>
+    </div>
+  `;
+}
+
+// ─── HISTORY CSV EXPORT / IMPORT ──────────────────────────────────
+function csvEscape(str) {
+  str = String(str == null ? "" : str);
+  return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+}
+
+// Shares/saves a file the smoothest way the browser supports. On iOS,
+// navigator.share with a file goes straight to the native share sheet —
+// "Save to Files" is right there, one tap, no detour through Downloads.
+// Falls back to the classic <a download> blob trick where Web Share
+// isn't available (desktop browsers, older Safari).
+async function shareOrDownloadFile(blob, filename, mimeType) {
+  try {
+    const file = new File([blob], filename, { type: mimeType });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file] });
+      return;
+    }
+  } catch (err) {
+    // User cancelled the share sheet, or share failed — fall through to download.
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportHistoryCSV() {
+  if (!workoutHistory.length) {
+    showMessage("No workout history yet to export.", false);
+    return;
+  }
+  const rows = [["date", "session", "duration_seconds", "core_seconds", "warmup_seconds", "cooldown_seconds", "rating", "user"].join(",")];
+  workoutHistory.forEach(h => {
+    const ratingVal = h.rating == null ? "" : h.rating;
+    const userVal = h.user == null ? "" : h.user;
+    const coreVal = h.coreDuration == null ? "" : h.coreDuration;
+    const warmupVal = h.warmupDuration == null ? "" : h.warmupDuration;
+    const cooldownVal = h.cooldownDuration == null ? "" : h.cooldownDuration;
+    rows.push([h.date, csvEscape(h.session), h.duration, coreVal, warmupVal, cooldownVal, ratingVal, csvEscape(userVal)].join(","));
+  });
+  const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+  const filename = "workout-history-" + new Date().toISOString().slice(0, 10) + ".csv";
+  shareOrDownloadFile(blob, filename, "text/csv");
+}
+
+function handleHistoryCSV(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const lines = ev.target.result.split(/\r?\n/).filter(l => l.trim());
+      const hasHeader = lines[0] && lines[0].toLowerCase().startsWith("date");
+      const startRow = hasHeader ? 1 : 0;
+      // Newer exports have 3 extra columns (core/warmup/cooldown seconds)
+      // inserted before rating/user; detect that from the header so older
+      // exports still import correctly at their original column positions.
+      const hasBreakdown = hasHeader && lines[0].toLowerCase().includes("core_seconds");
+      const imported = [];
+      for (let i = startRow; i < lines.length; i++) {
+        const cols = parseCSVLine(lines[i]);
+        if (cols.length < 3) continue;
+        const date = cols[0].trim();
+        const session = cols[1].trim();
+        const duration = parseInt(cols[2]);
+        const ratingIdx = hasBreakdown ? 6 : 3;
+        const userIdx = hasBreakdown ? 7 : 4;
+        const ratingRaw = (cols[ratingIdx] || "").trim();
+        const rating = ratingRaw !== "" ? parseInt(ratingRaw) : null;
+        const userRaw = (cols[userIdx] || "").trim() || undefined; // older exports may not have a user column
+        const user = userRaw ? migrateUserCode(userRaw) : userRaw;
+        if (!date || !session || isNaN(duration)) continue;
+        const entry = { date, session, duration, rating: isNaN(rating) ? null : rating, user };
+        if (hasBreakdown) {
+          const coreRaw = (cols[3] || "").trim();
+          const warmupRaw = (cols[4] || "").trim();
+          const cooldownRaw = (cols[5] || "").trim();
+          if (coreRaw !== "") entry.coreDuration = parseInt(coreRaw);
+          if (warmupRaw !== "") entry.warmupDuration = parseInt(warmupRaw);
+          if (cooldownRaw !== "") entry.cooldownDuration = parseInt(cooldownRaw);
+        }
+        imported.push(entry);
+      }
+      if (!imported.length) {
+        showMessage("No valid rows found. Format: date, session, duration_seconds, core_seconds, warmup_seconds, cooldown_seconds, rating, user", false);
+        return;
+      }
+      const seen = new Set(workoutHistory.map(h => h.date + "|" + h.session + "|" + h.duration + "|" + (h.user == null ? "" : h.user)));
+      let added = 0;
+      imported.forEach(h => {
+        const key = h.date + "|" + h.session + "|" + h.duration + "|" + (h.user == null ? "" : h.user);
+        if (!seen.has(key)) {
+          workoutHistory.push(h);
+          seen.add(key);
+          added++;
+        }
+      });
+      workoutHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
+      saveHistoryToStorage();
+      updateStatsDisplay();
+      showMessage(`Imported ${added} new entr${added === 1 ? "y" : "ies"} (${imported.length - added} duplicate${imported.length - added === 1 ? "" : "s"} skipped).`, true);
+    } catch (err) {
+      showMessage("Error reading history CSV: " + err.message, false);
+    }
+  };
+  reader.readAsText(file, "UTF-8");
+  e.target.value = "";
+}
+
+// ─── HISTORY EDITOR (delete individual mistaken sessions) ──────────
+let historyFilter = "all"; // "all" | "Joris" | "Tina"
+
+function switchHistoryFilter(filter) {
+  historyFilter = filter;
+  document.querySelectorAll("#history-user-toggle .stats-user-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.user === filter);
+  });
+  renderHistoryEditor();
+}
+
+function renderHistoryEditor() {
+  const container = document.getElementById("history-list");
+  const filtered = workoutHistory.filter(h => historyFilter === "all" || h.user === historyFilter);
+  if (!filtered.length) {
+    container.innerHTML = `<div class="exercise-empty">No history entries${historyFilter === "all" ? "" : " for " + historyFilter} yet.</div>`;
+    return;
+  }
+
+  // Newest first — sort a copy, keep original object references so
+  // deleteHistoryEntry can find and remove the exact right one.
+  const sorted = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  container.innerHTML = sorted.map(h => {
+    const d = new Date(h.date);
+    const dateLabel = d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+    const ratingLabel = h.rating ? FACE_SCALE[h.rating - 1] : "unrated";
+    const userLabel = h.user === "Tina" ? "👨 Tina" : "🧑 Joris";
+    const idx = workoutHistory.indexOf(h);
+    return `
+      <div class="history-row">
+        <div class="history-row-body">
+          <div class="history-row-top">${h.session} <span class="chart-y-emoji">${ratingLabel}</span></div>
+          <div class="history-row-meta">${dateLabel} · ${formatTime(h.duration)} · ${userLabel}</div>
+        </div>
+        <button class="history-delete-btn" onclick="deleteHistoryEntry(${idx})" title="Delete this entry">🗑</button>
+      </div>
+    `;
+  }).join("");
+}
+
+function deleteHistoryEntry(idx) {
+  const entry = workoutHistory[idx];
+  if (!entry) return;
+  const d = new Date(entry.date);
+  const dateLabel = d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  if (!confirm(`Delete "${entry.session}" (${dateLabel})? This can't be undone.`)) return;
+  workoutHistory.splice(idx, 1);
+  saveHistoryToStorage();
+  renderHistoryEditor();
+  updateStatsDisplay();
+  showMessage("Entry deleted.", true);
+}
+
+function resetHistory() {
+  if (!confirm("Clear all workout history for BOTH people on this device? Export a CSV backup first if you want to keep it — this can't be undone.")) return;
+  workoutHistory = [];
+  saveHistoryToStorage();
+  updateStatsDisplay();
+  showMessage("History cleared.", true);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ⚙️  EDITABLE CONTENT — everything you'll normally want to tweak
+// lives in this one section: exercises & sessions, warm-up/cool-down,
+// how-to descriptions + intensity, motivational phrases, the spoken
+// intro wording, and the end-of-workout goal messages. Nothing below
+// this banner needs touching for normal content changes.
+// ══════════════════════════════════════════════════════════════════
 
 // ─── INGEBAKKEN DATA ─────────────────────────────────────────────
 // Pas deze lijst aan om je eigen exercises en sessies te beheren.
@@ -1361,181 +2981,6 @@ const COOLDOWN = [
   { name:"Triceps Stretch -- Switch Arm",     duration:42, prep:3, type:"cooldown" },
 ];
 
-// Builds the full step list for a session given whether warm-up/cool-down
-// are included. Used both for the real run (beginWorkout) and for preview
-// totals on the session cards — for the real run the main exercises are
-// kept by reference (so List-tab progress tracking still works); for
-// preview it doesn't matter since nothing needs object identity there.
-function composeSession(name, incWarm, incCool) {
-  const main = sessions[name] || [];
-  const warm = incWarm ? WARMUP.map(w => Object.assign({}, w, { session: name })) : [];
-  const cool = incCool ? COOLDOWN.map(w => Object.assign({}, w, { session: name })) : [];
-  return {
-    list: [...warm, ...main, ...cool],
-    mainStart: warm.length,
-    mainEnd: warm.length + main.length
-  };
-}
-
-// True if step `idx` is the first exercise of a section (Warm-up, Core,
-// or Cool-down) — the start of the very first section, the warm-up →
-// core boundary, and the core → cool-down boundary. Each of these gets
-// a single 10-second "get ready" announcement (see SECTION_ANNOUNCE_SECS)
-// instead of that exercise's own normal prep time.
-function isSectionStart(idx, mainStart, mainEnd) {
-  return idx === 0 || idx === mainStart || idx === mainEnd;
-}
-
-// Prep seconds to use for step `idx` in a composed list, given where the
-// main section starts/ends. Every section boundary (Warm-up, Core,
-// Cool-down) gets the fixed SECTION_ANNOUNCE_SECS; everything else uses
-// its own defined prep value.
-function previewPrepSeconds(idx, w, mainStart, mainEnd) {
-  if (isSectionStart(idx, mainStart, mainEnd)) return SECTION_ANNOUNCE_SECS;
-  return w.prep || 0;
-}
-
-// Full preview total (in seconds) for a session, including whichever of
-// warm-up/cool-down are currently toggled on. The very first step's 10s
-// section announcement already covers the "get ready for the session"
-// moment, so there's no separate intro time to add on top.
-function sessionPreviewTotal(name, incWarm, incCool) {
-  const { list, mainStart, mainEnd } = composeSession(name, incWarm, incCool);
-  let total = 0;
-  list.forEach((w, i) => { total += previewPrepSeconds(i, w, mainStart, mainEnd) + w.duration; });
-  return { list, total };
-}
-
-// ─── STATE ───────────────────────────────────────────────────────
-let sessions = {};
-let selectedSession = null;
-let currentWorkouts = [];
-let mainStartIdx = 0;   // index in currentWorkouts where the real session exercises start (after warm-up)
-let mainEndIdx = 0;     // index where the real session exercises end (cool-down starts)
-let includeWarmup = localStorage.getItem("includeWarmup") !== "false";   // default true
-let includeCooldown = localStorage.getItem("includeCooldown") !== "false"; // default true
-let userJChecked = localStorage.getItem("userJChecked") !== "false"; // default true
-let userTChecked = localStorage.getItem("userTChecked") !== "false"; // default true
-let sessionUsers = [];           // who this specific run was logged for, e.g. ["J","T"]
-let currentRatings = {};         // { J: 4, T: 2 } — picked but not yet saved
-let lastEntryIndexByUser = {};   // { J: idx-in-workoutHistory, T: idx-in-workoutHistory }
-let statsUser = "J";             // which user's stats are shown in the Stats tab
-let currentIdx = 0;
-let phase = "idle"; // idle | intro | prep | work | done
-let seconds = 0;
-let totalSeconds = 0;
-let running = false;
-let timerInterval = null;
-let currentTab = "timer";
-
-// ─── WORKOUT HISTORY / STATS ──────────────────────────────────────
-// Persisted in localStorage on this device. Each entry:
-// { date: ISOString, session: name, duration: seconds, rating: 1-5|null, user: "J"|"T" }
-let workoutHistory = loadHistory();
-
-function loadHistory() {
-  try {
-    const raw = localStorage.getItem("workoutHistory");
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function saveHistoryToStorage() {
-  try {
-    localStorage.setItem("workoutHistory", JSON.stringify(workoutHistory));
-  } catch (e) {
-    showMessage("Couldn't save history: " + e.message, true);
-  }
-}
-
-// ─── AUDIO ───────────────────────────────────────────────────────
-const AudioCtx = window.AudioContext;
-let audioCtx = null;
-
-function getAudioCtx() {
-  if (!audioCtx) audioCtx = new AudioCtx();
-  return audioCtx;
-}
-
-function playBeep(freq, duration, vol = 0.4) {
-  try {
-    const ctx = getAudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(freq, ctx.currentTime);
-    gain.gain.setValueAtTime(vol, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + duration);
-  } catch(e) {}
-}
-
-function playCountdownBeep(n) {
-  // 3 short beeps for 3,2,1 — higher pitch on last
-  if (n === 1) playBeep(880, 0.25, 0.5);
-  else playBeep(660, 0.2, 0.35);
-}
-
-function playStartBeep() {
-  // Double high beep = GO!
-  playBeep(1046, 0.15, 0.5);
-  setTimeout(() => playBeep(1318, 0.3, 0.6), 160);
-}
-
-// ─── SPEECH ──────────────────────────────────────────────────────
-// Tries to pick a female English voice; falls back to default.
-// getVoices() can return an empty list until the browser finishes
-// loading them asynchronously, so we cache the result once it fires.
-let cachedVoices = [];
-function loadVoices() { cachedVoices = window.speechSynthesis.getVoices(); }
-if (window.speechSynthesis) {
-  loadVoices();
-  window.speechSynthesis.onvoiceschanged = loadVoices;
-}
-
-function getVoice() {
-  const voices = cachedVoices.length ? cachedVoices : window.speechSynthesis.getVoices();
-  // Prefer high-quality female English voices (Samantha, Karen, Moira on iOS)
-  const preferred = ["Samantha", "Karen", "Moira", "Tessa", "Fiona"];
-  for (const name of preferred) {
-    const v = voices.find(v => v.name.includes(name));
-    if (v) return v;
-  }
-  // Fallback: any female en-US/en-GB voice
-  return voices.find(v => v.lang.startsWith("en") && v.name.toLowerCase().includes("female"))
-      || voices.find(v => v.lang.startsWith("en"))
-      || null;
-}
-
-function speak(text) {
-  if (!window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const voice = getVoice();
-  const baseRate = 1.0;     // natural pace
-  const basePitch = 1.25;   // bright, upbeat tone
-  const baseVolume = 1.0;
-
-  // Wrap a word/phrase in **asterisks** to accentuate it — it's split out
-  // into its own utterance with a slightly slower rate and higher pitch,
-  // then queued right after the rest so it plays back-to-back.
-  const parts = text.split(/\*\*(.+?)\*\*/g).filter(p => p !== "");
-  parts.forEach((part, i) => {
-    const emphasized = i % 2 === 1;
-    const u = new SpeechSynthesisUtterance(part);
-    u.lang = "en-US";
-    if (voice) u.voice = voice;
-    u.rate = emphasized ? Math.max(0.5, baseRate * 0.85) : baseRate;
-    u.pitch = emphasized ? Math.min(2, basePitch + 0.2) : basePitch;
-    u.volume = emphasized ? 1.0 : baseVolume;
-    window.speechSynthesis.speak(u);
-  });
-}
-
 // Varied phrases for announcing next exercise
 const PREP_PHRASES = [
   (name) => `Get ready for **${name}**!`,
@@ -1559,1299 +3004,144 @@ const MID_PHRASES = [
   "You're doing brilliantly, keep it up!",
 ];
 
-let midMotivationsFired = [false, false];
-
-function pickPhrase(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function resetMidMotivations() {
-  midMotivationsFired = [false, false];
-}
-
-// Called each tick to check if we should fire a mid-workout motivation.
-// Scoped to the core session only (mainStartIdx..mainEndIdx), so warm-up
-// and cool-down length don't skew when these land. Also gated to the
-// halfway point of the current exercise's work phase, so the line plays
-// while you're actually mid-movement instead of right as it starts.
-function checkMidMotivation() {
-  const mainTotal = mainEndIdx - mainStartIdx;
-  if (mainTotal <= 0) return;
-  const doneInMain = currentIdx - mainStartIdx;
-  const pct = doneInMain / mainTotal;
-  const halfway = Math.max(1, Math.floor(totalSeconds / 2));
-  const midpointOfExercise = phase === "work" && seconds <= halfway;
-  // Fire at ~33% through the core session
-  if (!midMotivationsFired[0] && pct >= 0.30 && pct < 0.45 && midpointOfExercise) {
-    midMotivationsFired[0] = true;
-    speak(pickPhrase(MID_PHRASES));
-  }
-  // Fire at ~66% through the core session
-  if (!midMotivationsFired[1] && pct >= 0.62 && pct < 0.75 && midpointOfExercise) {
-    midMotivationsFired[1] = true;
-    speak(pickPhrase(MID_PHRASES));
-  }
-}
-
-// ─── SESSIONS ────────────────────────────────────────────────────
-function buildSessions() {
-  sessions = {};
-  allWorkouts.forEach(w => {
-    const s = w.session || "Algemeen";
-    if (!sessions[s]) sessions[s] = [];
-    sessions[s].push(w);
-  });
-}
-
-function formatTime(s) {
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return m + ":" + (sec < 10 ? "0" + sec : String(sec));
-}
-
-function totalDur(list) {
-  return list.reduce((a, w) => a + (w.prep || 0) + w.duration, 0);
-}
-
-function selectSession(name, el) {
-  selectedSession = name;
-  document.querySelectorAll(".session-card").forEach(c => c.classList.remove("selected"));
-  el.classList.add("selected");
-}
-
-function onBookendToggleChange() {
-  includeWarmup = document.getElementById("chk-warmup").checked;
-  includeCooldown = document.getElementById("chk-cooldown").checked;
-  localStorage.setItem("includeWarmup", String(includeWarmup));
-  localStorage.setItem("includeCooldown", String(includeCooldown));
-  renderSessionCards(); // refresh the durations shown on the cards
-}
-
-function onUserToggleChange(who) {
-  const jChk = document.getElementById("chk-user-j");
-  const tChk = document.getElementById("chk-user-t");
-  // Require at least one person selected — revert if this uncheck left none
-  if (!jChk.checked && !tChk.checked) {
-    if (who === "j") jChk.checked = true; else tChk.checked = true;
-    showMessage("At least one person needs to be selected.", false);
-  }
-  userJChecked = jChk.checked;
-  userTChecked = tChk.checked;
-  localStorage.setItem("userJChecked", String(userJChecked));
-  localStorage.setItem("userTChecked", String(userTChecked));
-}
-
-function renderSessionCards() {
-  buildSessions();
-  const keys = Object.keys(sessions);
-  const container = document.getElementById("session-cards");
-  container.innerHTML = "";
-  container.style.cssText = "width:100%;max-width:472px;display:flex;flex-direction:column;gap:12px;";
-
-  keys.forEach((name, i) => {
-    const main = sessions[name];
-    const { total: dur } = sessionPreviewTotal(name, includeWarmup, includeCooldown);
-    const icon = SESSION_ICONS[i % SESSION_ICONS.length];
-    const bookendNote = includeWarmup && includeCooldown ? "incl. warm-up & cool-down"
-      : includeWarmup ? "incl. warm-up"
-      : includeCooldown ? "incl. cool-down"
-      : "no warm-up/cool-down";
-    const card = document.createElement("div");
-    card.className = "session-card" + (selectedSession === name ? " selected" : "");
-    card.innerHTML = `
-      <div class="session-icon">${icon}</div>
-      <div>
-        <div class="session-name">${name}</div>
-        <div class="session-meta">${main.length} exercises · ${formatTime(dur)} (${bookendNote})</div>
-      </div>
-    `;
-    card.onclick = () => selectSession(name, card);
-    container.appendChild(card);
-  });
-
-  // Auto-select first
-  if (!selectedSession || !sessions[selectedSession]) {
-    selectedSession = keys[0];
-    const firstCard = container.querySelector(".session-card");
-    if (firstCard) firstCard.classList.add("selected");
-  }
-}
-
-function showSessions() {
-  phase = "idle";
-  running = false;
-  clearInterval(timerInterval);
-  document.getElementById("session-screen").style.display = "flex";
-  document.getElementById("timer-screen").style.display = "none";
-  document.getElementById("done-screen").style.display = "none";
-  document.getElementById("header-sub").textContent = "CHOOSE A SESSION";
-  // Always rebuild from allWorkouts — this is what makes the session
-  // list flexible: add/edit/remove entries in allWorkouts (or import a
-  // CSV) and the cards below update automatically, no HTML editing needed.
-  renderSessionCards();
-}
-
-// ─── START WORKOUT ───────────────────────────────────────────────
-function beginWorkout() {
-  if (!selectedSession || !sessions[selectedSession]) return;
-  // Unlock audio on iOS with a silent beep on user gesture
-  try { getAudioCtx().resume(); } catch(e) {}
-  if (!wakeLock) requestWakeLock();
-
-  sessionUsers = [];
-  if (userJChecked) sessionUsers.push("J");
-  if (userTChecked) sessionUsers.push("T");
-
-  const composed = composeSession(selectedSession, includeWarmup, includeCooldown);
-  currentWorkouts = composed.list; // main exercises kept by reference so the List tab can track progress
-  mainStartIdx = composed.mainStart;
-  mainEndIdx = composed.mainEnd;
-
-  document.getElementById("session-screen").style.display = "none";
-  document.getElementById("timer-screen").style.display = "flex";
-  document.getElementById("done-screen").style.display = "none";
-  renderProgressBar();
-  resetMidMotivations();
-  startPhase(0, "prep");
-}
-
-// The interval before the exercise at `idx` starts. Overridden to
-// SECTION_ANNOUNCE_SECS right at each section boundary (start of
-// Warm-up, start of Core, start of Cool-down), otherwise uses that
-// exercise's own prep value.
-function prepSecondsFor(idx, w) {
-  return isSectionStart(idx, mainStartIdx, mainEndIdx) ? SECTION_ANNOUNCE_SECS : (w.prep || 0);
-}
-
-// True if the exercise at this index is part of the warm-up or cool-down
-// (as opposed to the core/main session) — used to keep those sections
-// plain and uninterrupted, with motivational phrasing reserved for the
-// core workout only.
-function isBookend(idx) {
-  const item = currentWorkouts[idx];
-  const t = item ? item.type : undefined;
-  return t === "warmup" || t === "cooldown";
-}
-
-// Human-readable section name for step `idx`, used for the section
-// announcement ("Warm-up" / "Core" / "Cool-down") at each boundary.
-function sectionNameFor(idx) {
-  if (idx < mainStartIdx) return "Warm-up";
-  if (idx >= mainEndIdx) return "Cool-down";
-  return "Core";
-}
-
-// Splits a name like "Side Plank -- Switch Side" (dash can be "--" or "—")
-// into { main: "Side Plank", switchPart: "Switch Side" }. Only matches
-// when the part after the dash starts with "switch" — returns null for
-// ordinary names (including plain "Switch to other leg", which has no
-// dash and is handled separately as its own case).
-function parseSwitchName(name) {
-  const m = name.match(/^(.*?)\s*(?:--|—)\s*(switch.*)$/i);
-  return m ? { main: m[1].trim(), switchPart: m[2].trim() } : null;
-}
-
-// Shortens "Side Plank -- Switch Side" to just "Side Plank" for every
-// on-screen display of an exercise name (timer, next-up preview, list
-// tab). The full name is still used for CSV import/export and for the
-// separate mid-exercise spoken announcement (see parseSwitchName above).
-function displayName(name) {
-  const s = parseSwitchName(name);
-  return s ? s.main : name;
-}
-
-function startPhase(idx, ph) {
-  currentIdx = idx;
-  phase = ph;
-  const w = currentWorkouts[idx];
-  const secs = ph === "prep" ? prepSecondsFor(idx, w) : w.duration;
-  seconds = secs;
-  totalSeconds = secs;
-  running = true;
-
-  updateCircle();
-  updateExerciseInfo();
-  updateNextUp();
-  updateProgressBar();
-
-  // Speak exercise name during prep. Section boundaries (Warm-up, Core,
-  // Cool-down) get a single 10s "get ready" announcement that also names
-  // the first exercise of that section; the very first one additionally
-  // names the session itself. Otherwise warm-up/cool-down exercises get
-  // a plain, consistent "Next up" announcement, and motivational
-  // variation is reserved for the core session.
-  if (ph === "prep") {
-    const switchInfo = parseSwitchName(w.name);
-    const spokenName = switchInfo ? switchInfo.main : w.name;
-
-    if (/^switch/i.test(w.name)) {
-      // "Switch ..." exercises are quick mid-set transitions — just say
-      // the name, no "Get ready for"/"Next up"/motivational wrapping.
-      speak(w.name);
-    } else if (isSectionStart(idx, mainStartIdx, mainEndIdx)) {
-      const sectionName = sectionNameFor(idx);
-      if (idx === 0) {
-        speak(`Get ready and set your watch for ${selectedSession}. ${sectionName}: **${spokenName}**`);
-      } else {
-        speak(`Get ready for ${sectionName}: **${spokenName}**`);
-      }
-    } else if (isBookend(idx)) {
-      speak(`Next up, **${spokenName}**`);
-    } else {
-      speak(pickPhrase(PREP_PHRASES)(spokenName));
-    }
-  }
-
-  clearInterval(timerInterval);
-  timerInterval = setInterval(tick, 1000);
-}
-
-function tick() {
-  if (!running) return;
-  seconds--;
-
-  const w = currentWorkouts[currentIdx];
-  const bookend = isBookend(currentIdx);
-  const sectionStartPrep = phase === "prep" && isSectionStart(currentIdx, mainStartIdx, mainEndIdx);
-  const isSwitchEx = w && /^switch/i.test(w.name);
-
-  // Mid-workout motivations only apply to the core session
-  if (!bookend) checkMidMotivation();
-
-  // Countdown beeps at 3, 2, 1. Spoken numbers are reserved for the core
-  // session and for section-start announcements (Warm-up/Core/Cool-down)
-  // — during ordinary warm-up/cool-down reps the numbers would talk over
-  // the "Next up" announcement, so we stay silent there and just say
-  // "Go" once work starts instead (see advance()). "Switch..." exercises
-  // skip the countdown entirely — no beeps, no numbers, just "Go!".
-  if (seconds <= 3 && seconds > 0 && !(phase === "prep" && isSwitchEx)) {
-    playCountdownBeep(seconds);
-    if (!bookend || sectionStartPrep) {
-      if (seconds === 3) speak("Three");
-      else if (seconds === 2) speak("Two");
-      else if (seconds === 1) speak("One");
-    }
-  }
-
-  updateCircle();
-
-  // For "Main -- Switch Side"-style exercises, announce the second half
-  // at the halfway point of the exercise, minus 1 second — so it scales
-  // with however long that exercise runs.
-  const switchTarget = Math.max(0, Math.floor(totalSeconds / 2) - 1);
-  if (phase === "work" && totalSeconds - seconds === switchTarget) {
-    const switchInfo = w && parseSwitchName(w.name);
-    if (switchInfo) speak(switchInfo.switchPart);
-  }
-
-  if (seconds <= 0) {
-    clearInterval(timerInterval);
-    advance();
-  }
-}
-
-function advance() {
-  if (phase === "prep") {
-    const w = currentWorkouts[currentIdx];
-    const isSwitchEx = w && /^switch/i.test(w.name);
-    if (!isSwitchEx) playStartBeep();
-    speak("Go!");
-    startPhase(currentIdx, "work");
-  } else {
-    const next = currentIdx + 1;
-    if (next < currentWorkouts.length) {
-      startPhase(next, prepSecondsFor(next, currentWorkouts[next]) > 0 ? "prep" : "work");
-    } else {
-      finishWorkout();
-    }
-  }
-}
-
-function finishWorkout() {
-  phase = "done";
-  running = false;
-  clearInterval(timerInterval);
-  speak("Workout complete! You absolutely crushed it! Amazing work! Don't forget to switch of your watch!");
-  playBeep(523, 0.1); setTimeout(() => playBeep(659, 0.1), 120); setTimeout(() => playBeep(784, 0.3), 240);
-  document.getElementById("timer-screen").style.display = "none";
-  document.getElementById("done-screen").style.display = "block";
-  const total = currentWorkouts.reduce((a, w, i) => a + prepSecondsFor(i, w) + w.duration, 0);
-
-  // Split that same total into warm-up / core / cool-down seconds, using
-  // the same section boundaries (mainStartIdx/mainEndIdx) the live
-  // announcements use — this is what feeds the stacked weekly chart.
-  let warmupSecs = 0, coreSecs = 0, cooldownSecs = 0;
-  currentWorkouts.forEach((w, i) => {
-    const secs = prepSecondsFor(i, w) + w.duration;
-    if (i < mainStartIdx) warmupSecs += secs;
-    else if (i >= mainEndIdx) cooldownSecs += secs;
-    else coreSecs += secs;
-  });
-
-  const users = sessionUsers.length ? sessionUsers : ["J"]; // safety fallback, shouldn't normally happen
-  document.getElementById("done-sub").textContent =
-    `${currentWorkouts.length} exercises · ${formatTime(total)} totaal · ${users.join(" & ")}`;
-
-  // Log this completed workout to history — one entry per selected person
-  // (counts immediately; the rating below is optional and attaches to
-  // that person's own entry).
-  lastEntryIndexByUser = {};
-  users.forEach(u => {
-    workoutHistory.push({
-      date: new Date().toISOString(),
-      session: selectedSession,
-      duration: total,
-      coreDuration: coreSecs,
-      warmupDuration: warmupSecs,
-      cooldownDuration: cooldownSecs,
-      rating: null,
-      user: u
-    });
-    lastEntryIndexByUser[u] = workoutHistory.length - 1;
-  });
-  saveHistoryToStorage();
-  renderEvalUI(users);
-  updateStatsDisplay();
-}
-
-// Builds one evaluation card per person who took part in this session.
-// With one person it's unlabeled; with both, each card is tagged so
-// it's clear whose rating is whose.
-function renderEvalUI(users) {
-  currentRatings = {};
-  const container = document.getElementById("eval-container");
-  container.innerHTML = users.map(u => `
-    <div class="eval-box">
-      <div class="eval-label">${users.length > 1 ? `💪 ${u} — ` : ""}HOW HEAVY DID THAT FEEL?</div>
-      <div class="eval-scale-labels"><span>LIGHT</span><span>HEAVY</span></div>
-      <div class="sweat-row">
-        ${[1,2,3,4,5].map(v => `<span class="sweat" data-user="${u}" data-v="${v}">${FACE_SCALE[v-1]}</span>`).join("")}
-      </div>
-      <button class="btn-save-eval" data-user="${u}">SAVE RATING</button>
-      <div class="eval-saved" id="eval-saved-${u}" style="display:none">✓ Saved — nice work!</div>
-    </div>
-  `).join("");
-}
-
-// Delegated listener (attached once) — handles clicks for however many
-// eval cards are currently rendered (one or two, depending on who trained).
-document.getElementById("eval-container").addEventListener("click", e => {
-  const sweat = e.target.closest(".sweat");
-  if (sweat) {
-    const user = sweat.dataset.user;
-    const rating = parseInt(sweat.dataset.v);
-    currentRatings[user] = rating;
-    document.querySelectorAll(`.sweat[data-user="${user}"]`).forEach(s => {
-      s.classList.toggle("filled", parseInt(s.dataset.v) === rating);
-    });
-    return;
-  }
-  const saveBtn = e.target.closest(".btn-save-eval");
-  if (saveBtn) saveEvaluationForUser(saveBtn.dataset.user);
-});
-
-function saveEvaluationForUser(user) {
-  const rating = currentRatings[user];
-  const idx = lastEntryIndexByUser[user];
-  if (!rating || idx === undefined || !workoutHistory[idx]) return;
-  workoutHistory[idx].rating = rating;
-  saveHistoryToStorage();
-  updateStatsDisplay();
-  const savedEl = document.getElementById(`eval-saved-${user}`);
-  if (savedEl) savedEl.style.display = "block";
-  const btn = document.querySelector(`.btn-save-eval[data-user="${user}"]`);
-  if (btn) btn.style.display = "none";
-}
-
-function togglePause() {
-  running = !running;
-  const btn = document.getElementById("btn-main");
-  if (running) {
-    btn.textContent = "⏸ PAUSE";
-    btn.className = "btn-main pause";
-    timerInterval = setInterval(tick, 1000);
-  } else {
-    btn.textContent = "▶ RESUME";
-    btn.className = "btn-main resume";
-    clearInterval(timerInterval);
-  }
-}
-
-function stopWorkout() {
-  clearInterval(timerInterval);
-  if (window.speechSynthesis) window.speechSynthesis.cancel();
-  showSessions();
-}
-
-// ─── UI UPDATES ──────────────────────────────────────────────────
-const CIRC = 2 * Math.PI * 110;
-
-function updateCircle() {
-  const arc = document.getElementById("timer-arc");
-  const txt = document.getElementById("timer-text");
-  const phLabel = document.getElementById("timer-phase");
-  const svg = document.getElementById("timer-svg");
-  const ring = document.getElementById("pulse-ring");
-
-  const progress = totalSeconds > 0 ? seconds / totalSeconds : 1;
-  arc.setAttribute("stroke-dasharray", `${CIRC * progress} ${CIRC}`);
-  txt.textContent = formatTime(seconds);
-
-  let color, glow, label;
-  if (phase === "prep") {
-    color = "#F59E0B"; glow = "rgba(245,158,11,0.4)"; label = "GET READY";
-    ring.className = "pulse-ring yellow";
-  } else if (seconds <= 3 && seconds > 0) {
-    color = "#EF4444"; glow = "rgba(239,68,68,0.45)"; label = "GO";
-    ring.className = "pulse-ring red";
-  } else {
-    color = "#10B981"; glow = "rgba(16,185,129,0.4)"; label = "GO";
-    ring.className = "pulse-ring";
-  }
-
-  arc.setAttribute("stroke", color);
-  phLabel.setAttribute("fill", color);
-  phLabel.textContent = label;
-  svg.style.filter = `drop-shadow(0 0 24px ${glow})`;
-}
-
-function updateExerciseInfo() {
-  const w = currentWorkouts[currentIdx];
-  let blockLabel, posText;
-  if (w.type === "warmup") {
-    blockLabel = "WARM-UP";
-    posText = `${currentIdx + 1} / ${WARMUP.length}`;
-  } else if (w.type === "cooldown") {
-    blockLabel = "COOL-DOWN";
-    posText = `${currentIdx - mainEndIdx + 1} / ${COOLDOWN.length}`;
-  } else {
-    blockLabel = selectedSession;
-    const mainCount = mainEndIdx - mainStartIdx;
-    posText = `${currentIdx - mainStartIdx + 1} / ${mainCount}`;
-  }
-  document.getElementById("ex-count").textContent = `${posText} — ${blockLabel}`;
-  document.getElementById("ex-name").textContent = displayName(w.name);
-  const sub = document.getElementById("ex-sub");
-  if (phase === "prep") {
-    sub.textContent = "Get ready…";
-    sub.style.color = "#F59E0B";
-  } else {
-    sub.textContent = `${w.duration}s exercise`;
-    sub.style.color = "var(--muted)";
-  }
-  document.getElementById("header-sub").textContent = blockLabel.toUpperCase() + " · LET'S GO";
-}
-
-function updateNextUp() {
-  const nextEl = document.getElementById("next-up");
-  const next = currentWorkouts[currentIdx + 1];
-  if (next) {
-    nextEl.style.display = "flex";
-    document.getElementById("next-name").textContent = displayName(next.name);
-    document.getElementById("next-dur").textContent = next.duration + "s";
-  } else {
-    nextEl.style.display = "none";
-  }
-}
-
-function renderProgressBar() {
-  const bar = document.getElementById("progress-bar");
-  bar.innerHTML = currentWorkouts.map((_, i) =>
-    `<div class="prog-dot" id="pdot-${i}" style="background:#E5E7EB"></div>`
-  ).join("");
-}
-
-function updateProgressBar() {
-  currentWorkouts.forEach((_, i) => {
-    const dot = document.getElementById("pdot-" + i);
-    if (!dot) return;
-    if (i < currentIdx) dot.style.background = "#10B981";
-    else if (i === currentIdx) dot.style.background = phase === "prep" ? "#F59E0B" : "#10B981";
-    else dot.style.background = "#E5E7EB";
-  });
-}
-
-// ─── LIST VIEW ───────────────────────────────────────────────────
-function renderStaticBlock(container, items, headerText, autoExpand) {
-  const header = document.createElement("div");
-  header.className = "list-session-header" + (autoExpand ? " expanded" : "");
-  header.innerHTML = `<span class="chevron">▶</span><span>${headerText}</span><span class="list-session-count">${items.length} exercises</span>`;
-  container.appendChild(header);
-
-  const group = document.createElement("div");
-  group.className = "list-session-group" + (autoExpand ? " expanded" : "");
-  container.appendChild(group);
-  header.onclick = () => {
-    header.classList.toggle("expanded");
-    group.classList.toggle("expanded");
-  };
-
-  items.forEach((w, i) => {
-    const item = document.createElement("div");
-    item.className = "list-item";
-    item.innerHTML = `
-      <div class="list-num">${i + 1}</div>
-      <div>
-        <div class="list-name">${displayName(w.name)}</div>
-        <div class="list-meta">Prep: ${w.prep}s</div>
-      </div>
-      <div class="list-dur">${w.duration}s</div>
-    `;
-    group.appendChild(item);
-  });
-}
-
-function renderList() {
-  const container = document.getElementById("list-items");
-  container.innerHTML = "";
-  container.style.cssText = "display:flex;flex-direction:column;gap:10px;width:100%;";
-
-  const warmupRunning = phase !== "idle" && phase !== "done" && currentIdx < mainStartIdx;
-  const cooldownRunning = phase !== "idle" && phase !== "done" && currentIdx >= mainEndIdx;
-
-  renderStaticBlock(container, WARMUP, "🔥 WARM-UP · EVERY SESSION", warmupRunning);
-
-  let lastSession = null;
-  let sessionNum = 0;
-  let group = null;        // the currently-open <div> of exercise items for this session
-  let countEl = null;      // that session's "N exercises" badge, updated as we go
-  let sessionExerciseCount = 0;
-  allWorkouts.forEach((w) => {
-    if (w.session !== lastSession) {
-      lastSession = w.session;
-      sessionNum = 0;
-
-      // Auto-expand only the session currently mid-workout, so progress
-      // highlighting stays visible; every other session starts collapsed.
-      const isRunningThisSession = phase !== "idle" && phase !== "done" && selectedSession === w.session;
-
-      const header = document.createElement("div");
-      header.className = "list-session-header" + (isRunningThisSession ? " expanded" : "");
-      header.innerHTML = `<span class="chevron">▶</span><span>${(w.session || "ALGEMEEN").toUpperCase()}</span><span class="list-session-count"></span>`;
-      container.appendChild(header);
-      countEl = header.querySelector(".list-session-count");
-
-      const sessionGroup = document.createElement("div"); // fresh binding per session, for the closure below
-      sessionGroup.className = "list-session-group" + (isRunningThisSession ? " expanded" : "");
-      container.appendChild(sessionGroup);
-      header.onclick = () => {
-        header.classList.toggle("expanded");
-        sessionGroup.classList.toggle("expanded");
-      };
-
-      group = sessionGroup; // shared mutable reference used below to append this session's items
-      sessionExerciseCount = 0;
-    }
-    sessionNum++;
-    sessionExerciseCount++;
-    countEl.textContent = sessionExerciseCount + " exercises";
-
-    const runIdx = currentWorkouts.indexOf(w);
-    const isActive = phase !== "idle" && phase !== "done" &&
-      selectedSession === w.session && runIdx !== -1 && runIdx === currentIdx;
-    const isDone = phase !== "idle" &&
-      selectedSession === w.session && runIdx !== -1 && runIdx < currentIdx;
-
-    const item = document.createElement("div");
-    item.className = "list-item" + (isActive ? " active" : "") + (isDone ? " done-item" : "");
-    const numClass = isDone ? "list-num done-num" : isActive ? "list-num active-num" : "list-num";
-    const numContent = isDone ? "✓" : sessionNum;
-    item.innerHTML = `
-      <div class="${numClass}">${numContent}</div>
-      <div>
-        <div class="list-name">${displayName(w.name)}</div>
-        <div class="list-meta">Prep: ${w.prep}s</div>
-      </div>
-      <div class="list-dur">${w.duration}s</div>
-    `;
-    group.appendChild(item);
-  });
-
-  renderStaticBlock(container, COOLDOWN, "🧊 COOL-DOWN · EVERY SESSION", cooldownRunning);
-}
-
-// ─── TABS ────────────────────────────────────────────────────────
-function switchTab(tab) {
-  currentTab = tab;
-  document.getElementById("view-timer").style.display = tab === "timer" ? "block" : "none";
-  document.getElementById("view-list").style.display = tab === "list" ? "block" : "none";
-  document.getElementById("view-stats").style.display = tab === "stats" ? "block" : "none";
-  document.getElementById("view-exercises").style.display = tab === "exercises" ? "block" : "none";
-  document.getElementById("tab-timer").className = "tab" + (tab === "timer" ? " active" : "");
-  document.getElementById("tab-list").className = "tab" + (tab === "list" ? " active" : "");
-  document.getElementById("tab-stats").className = "tab" + (tab === "stats" ? " active" : "");
-  document.getElementById("tab-exercises").className = "tab" + (tab === "exercises" ? " active" : "");
-  if (tab === "list") renderList();
-  if (tab === "stats") updateStatsDisplay();
-  if (tab === "exercises") renderExerciseGuide();
-}
-
-// ─── EXERCISE GUIDE (new tab) ──────────────────────────────────────
-// Strips both the "-- Switch Side" suffix (see parseSwitchName) and any
-// "First/Second/Third Cycle - " prefix used for repeated circuit rounds,
-// so e.g. "First Cycle - Burpees" and "Third Cycle - Burpees" both match
-// the single "Burpees" entry below instead of needing three entries.
-function canonicalExerciseName(name) {
-  const split = parseSwitchName(name);
-  let n = split ? split.main : name;
-  n = n.replace(/^(First|Second|Third|Fourth)\s+Cycle\s*-\s*/i, "").trim();
-  return n;
-}
-
-function categoryIcon(name) {
-  const n = name.toLowerCase();
-  if (/push|dip/.test(n)) return "💪";
-  if (/plank|crunch|bird dog|superman|swimmer|windscreen|scissor|v sit/.test(n)) return "🧘";
-  if (/jump|burpee|mountain climber|high knee|march|shuffle|hop|skater|box|thrust/.test(n)) return "🤸";
-  if (/stretch|roll|hug|rotation|drop & touch/.test(n)) return "🙆";
-  if (/squat|lunge|step-up|bridge|deadlift/.test(n)) return "🦵";
-  return "🏋️";
-}
-
 // Short how-to-perform cues, keyed by lowercased canonical name. Every
 // unique exercise in WARMUP/allWorkouts/COOLDOWN should have an entry
 // here; anything missing falls back to a generic cue in renderExerciseGuide().
+// Each exercise now carries an estimated intensity, 1 (light) to 5 (very
+// hard) — a rough classification based on movement type (static stretch,
+// isometric hold, standard strength move, or explosive/plyo/cardio move).
+// This feeds estimateSessionIntensity() below, giving sessions a
+// predicted difficulty even before anyone has ever rated them.
 const EXERCISE_INFO = {
-  "1-2 box & kick": "Boxing footwork: throw a one-two punch combo, then a front kick — stay light on your feet.",
-  "abdominal crunch": "Lie on your back, knees bent, lift your shoulders off the floor using your abs, then lower slowly.",
-  "advanced bird dog": "From bird dog position, add a crunch — bring elbow and knee together underneath you, then extend back out.",
-  "arm hugs": "Cross your arms across your chest, alternating which arm is on top each rep, to loosen the shoulders.",
-  "arm stretch above": "Reach both arms straight overhead and hold, lengthening through your sides.",
-  "arm stretch backward": "Clasp your hands behind your back and gently lift, opening up the chest.",
-  "arm stretch forward": "Clasp your hands in front of you, round your upper back, and reach forward.",
-  "bicycle crunch": "Lying on your back, alternate bringing elbow to opposite knee in a pedaling motion.",
-  "bird dog": "On hands and knees, extend one arm and the opposite leg straight out, keeping your back flat.",
-  "bird dog push-up": "Combine a bird dog extension with a push-up between reps for added core challenge.",
-  "burpees": "Squat down, kick your feet back into a plank, do a push-up, jump feet back in, then jump up.",
-  "chair decline push-up": "Feet elevated on a chair, hands on the floor — push-up with extra load on the upper chest/shoulders.",
-  "chair pike push-up": "Feet on a chair, hips piked up toward the ceiling, lower your head toward the floor and push back up.",
-  "chair split squat": "Rear foot resting on a chair behind you, lower your front leg into a lunge.",
-  "chair-assist push-up": "Hands on a chair seat instead of the floor — an easier push-up angle for beginners.",
-  "chair-assist split squat": "Hold the chair for balance while performing a split squat (rear-foot-elevated lunge).",
-  "chair-assist squat": "Hold onto a chair for balance as you squat down and stand back up.",
-  "diamond push-up": "Hands together under your chest forming a diamond shape — push-up that emphasizes triceps.",
-  "downward dog grasshopper": "From downward dog, twist and bring one knee toward the opposite elbow, alternating sides.",
-  "drop & touch": "Quickly drop into a squat and touch the floor, then stand back up.",
-  "full side plank": "Side plank with your top arm reaching straight up and legs fully extended and stacked.",
-  "grasshopper push-up": "From a plank, bring one knee across your body toward the same-side elbow, alternating.",
-  "high knees": "Jog in place, driving your knees up toward hip height as fast as you can.",
-  "hindu push-up": "A flowing push-up: hips up like downward dog, dive forward and down, then sweep up into upward dog.",
-  "jump rope skip": "Mimic jumping rope — small, quick hops with wrists circling, no rope needed.",
-  "jumping jacks": "Jump while spreading your legs and raising your arms overhead, then jump back to start.",
-  "knee hugs": "Standing, pull one knee up to your chest and hug it, alternating legs.",
-  "kneeling plank": "Hold a plank position with your knees on the ground instead of your toes.",
-  "kneeling push-up": "Push-up performed with your knees on the floor for reduced load.",
-  "kneeling side plank": "Side plank with your bottom knee bent and resting on the ground for support.",
-  "kneeling staggered push-up": "Knees down, one hand placed further forward than the other, then push-up.",
-  "lateral drop & touch": "Step side to side, dropping down to touch the floor on each side.",
-  "long jumps": "Jump forward as far as you can, landing softly, then jump backward to return.",
-  "lunge": "Step forward and lower until both knees are bent around 90°, then push back to standing.",
-  "lunge & rotation": "While in a lunge, rotate your torso toward your front leg.",
-  "lunge, touch & kick": "Lunge down and touch the floor, then stand and kick the front leg forward.",
-  "march in place": "Walk in place, lifting your knees at a comfortable, steady pace.",
-  "mountain climbers": "From a plank, alternate quickly driving your knees toward your chest.",
-  "one-leg bridge": "Glute bridge with one leg lifted and extended straight, hips driving up.",
-  "one-leg deadlift": "Balance on one leg and hinge forward at the hips, reaching toward the floor.",
-  "one-leg power squat": "Single-leg squat finished with an explosive jump.",
-  "one-leg push-up": "Push-up performed with one leg lifted off the ground for extra core/stability challenge.",
-  "one-leg squat": "Pistol-style squat, balancing and lowering on one leg.",
-  "one-leg squat hops": "Single-leg squat followed by a small hop, landing softly.",
-  "one-leg squat touch": "Single-leg squat while reaching down to touch the floor.",
-  "one-leg triceps dip": "Triceps dip performed with one leg lifted off the ground.",
-  "one-leg wall sit": "Wall sit holding one leg extended straight out, balancing on the other.",
-  "plank": "Hold a straight line from head to heels, supported on forearms and toes.",
-  "plyo split squat": "Jumping lunge — switch legs mid-air between reps, landing softly each time.",
-  "power push-up": "Explosive push-up where your hands leave the ground at the top.",
-  "power squat": "Squat down, then explode upward into a jump.",
-  "push-up": "Hands under shoulders, lower your chest to the floor and press back up, keeping your body straight.",
-  "push-up & rotation": "After a push-up, rotate into a side plank, reaching one arm toward the ceiling.",
-  "quadriceps stretch": "Standing, pull one heel toward your glute to stretch the front of your thigh.",
-  "reverse crunch & hug": "Lift your hips and knees toward your chest, hugging them in at the top.",
-  "reverse lunge": "Step backward into a lunge instead of forward, then return to standing.",
-  "reverse lunge & knee lift": "Reverse lunge, then drive the rear knee up toward your chest as you stand.",
-  "reverse plank": "Sitting, hands behind you, lift your hips to form a straight line facing upward.",
-  "scissor kicks": "Lying on your back, legs straight, alternate small up-and-down scissor-like kicks.",
-  "shoulder roll forward": "Roll your shoulders forward in slow circles to loosen them up.",
-  "side lunge": "Step wide to one side and bend that knee, keeping the other leg straight.",
-  "side plank": "Balance on one forearm with your body in a straight line facing sideways.",
-  "side plank crunch": "From a side plank, crunch your top elbow and knee together, then extend back out.",
-  "side-to-side shuffle": "Quick, low lateral shuffle steps from side to side.",
-  "side-to-side hop": "Hop side to side, landing softly on both feet.",
-  "single-leg stretch": "Seated or lying, extend one leg and gently stretch it, then switch sides.",
-  "skater": "Bound laterally from one leg to the other, like a speed skater's stride.",
-  "spiderman push-up": "During a push-up, bring one knee out toward the same-side elbow.",
-  "squat": "Feet shoulder-width apart, push your hips back and bend your knees as if sitting into a chair.",
-  "squat & box": "Squat down, then throw a couple of punches ('boxing') as you stand.",
-  "squat thrusts": "Squat down, kick your feet back into a plank, then jump them back in — no push-up or jump at the end.",
-  "squats": "Feet shoulder-width apart, push your hips back and bend your knees as if sitting into a chair.",
-  "staggered push-up": "Push-up with one hand placed further forward than the other.",
-  "stand & box": "Standing in place, throw alternating punches with control.",
-  "step-up": "Step up onto a raised surface with one leg, then the other, alternating which leg leads.",
-  "superman": "Lie face down and lift your arms and legs off the floor at the same time.",
-  "swimmer": "Lie face down and alternate lifting opposite arm and leg, like a swimming kick.",
-  "torso rotation": "Standing, rotate your upper body gently from side to side.",
-  "triceps dip": "Hands on a chair or bench behind you, lower your body by bending your elbows, then push back up.",
-  "triceps stretch": "Raise one arm overhead, bend the elbow, and gently pull with the other hand.",
-  "v sit twist": "Balance in a V-sit position and rotate your torso side to side.",
-  "wall sit": "Back flat against a wall, slide down until your knees are at about 90° and hold.",
-  "windscreen wipers": "Lying down with legs raised, sweep them side to side like windscreen wipers.",
+  "1-2 box & kick": { desc: "Boxing footwork: throw a one-two punch combo, then a front kick — stay light on your feet.", intensity: 4 },
+  "abdominal crunch": { desc: "Lie on your back, knees bent, lift your shoulders off the floor using your abs, then lower slowly.", intensity: 2 },
+  "advanced bird dog": { desc: "From bird dog position, add a crunch — bring elbow and knee together underneath you, then extend back out.", intensity: 3 },
+  "arm hugs": { desc: "Cross your arms across your chest, alternating which arm is on top each rep, to loosen the shoulders.", intensity: 1 },
+  "arm stretch above": { desc: "Reach both arms straight overhead and hold, lengthening through your sides.", intensity: 1 },
+  "arm stretch backward": { desc: "Clasp your hands behind your back and gently lift, opening up the chest.", intensity: 1 },
+  "arm stretch forward": { desc: "Clasp your hands in front of you, round your upper back, and reach forward.", intensity: 1 },
+  "bicycle crunch": { desc: "Lying on your back, alternate bringing elbow to opposite knee in a pedaling motion.", intensity: 3 },
+  "bird dog": { desc: "On hands and knees, extend one arm and the opposite leg straight out, keeping your back flat.", intensity: 2 },
+  "bird dog push-up": { desc: "Combine a bird dog extension with a push-up between reps for added core challenge.", intensity: 3 },
+  "burpees": { desc: "Squat down, kick your feet back into a plank, do a push-up, jump feet back in, then jump up.", intensity: 5 },
+  "chair decline push-up": { desc: "Feet elevated on a chair, hands on the floor — push-up with extra load on the upper chest/shoulders.", intensity: 4 },
+  "chair pike push-up": { desc: "Feet on a chair, hips piked up toward the ceiling, lower your head toward the floor and push back up.", intensity: 4 },
+  "chair split squat": { desc: "Rear foot resting on a chair behind you, lower your front leg into a lunge.", intensity: 3 },
+  "chair-assist push-up": { desc: "Hands on a chair seat instead of the floor — an easier push-up angle for beginners.", intensity: 2 },
+  "chair-assist split squat": { desc: "Hold the chair for balance while performing a split squat (rear-foot-elevated lunge).", intensity: 2 },
+  "chair-assist squat": { desc: "Hold onto a chair for balance as you squat down and stand back up.", intensity: 2 },
+  "diamond push-up": { desc: "Hands together under your chest forming a diamond shape — push-up that emphasizes triceps.", intensity: 4 },
+  "downward dog grasshopper": { desc: "From downward dog, twist and bring one knee toward the opposite elbow, alternating sides.", intensity: 3 },
+  "drop & touch": { desc: "Quickly drop into a squat and touch the floor, then stand back up.", intensity: 4 },
+  "full side plank": { desc: "Side plank with your top arm reaching straight up and legs fully extended and stacked.", intensity: 4 },
+  "grasshopper push-up": { desc: "From a plank, bring one knee across your body toward the same-side elbow, alternating.", intensity: 4 },
+  "high knees": { desc: "Jog in place, driving your knees up toward hip height as fast as you can.", intensity: 5 },
+  "hindu push-up": { desc: "A flowing push-up: hips up like downward dog, dive forward and down, then sweep up into upward dog.", intensity: 4 },
+  "jump rope skip": { desc: "Mimic jumping rope — small, quick hops with wrists circling, no rope needed.", intensity: 4 },
+  "jumping jacks": { desc: "Jump while spreading your legs and raising your arms overhead, then jump back to start.", intensity: 3 },
+  "knee hugs": { desc: "Standing, pull one knee up to your chest and hug it, alternating legs.", intensity: 1 },
+  "kneeling plank": { desc: "Hold a plank position with your knees on the ground instead of your toes.", intensity: 2 },
+  "kneeling push-up": { desc: "Push-up performed with your knees on the floor for reduced load.", intensity: 2 },
+  "kneeling side plank": { desc: "Side plank with your bottom knee bent and resting on the ground for support.", intensity: 2 },
+  "kneeling staggered push-up": { desc: "Knees down, one hand placed further forward than the other, then push-up.", intensity: 2 },
+  "lateral drop & touch": { desc: "Step side to side, dropping down to touch the floor on each side.", intensity: 4 },
+  "long jumps": { desc: "Jump forward as far as you can, landing softly, then jump backward to return.", intensity: 5 },
+  "lunge": { desc: "Step forward and lower until both knees are bent around 90°, then push back to standing.", intensity: 3 },
+  "lunge & rotation": { desc: "While in a lunge, rotate your torso toward your front leg.", intensity: 3 },
+  "lunge, touch & kick": { desc: "Lunge down and touch the floor, then stand and kick the front leg forward.", intensity: 4 },
+  "march in place": { desc: "Walk in place, lifting your knees at a comfortable, steady pace.", intensity: 1 },
+  "mountain climbers": { desc: "From a plank, alternate quickly driving your knees toward your chest.", intensity: 5 },
+  "one-leg bridge": { desc: "Glute bridge with one leg lifted and extended straight, hips driving up.", intensity: 3 },
+  "one-leg deadlift": { desc: "Balance on one leg and hinge forward at the hips, reaching toward the floor.", intensity: 3 },
+  "one-leg power squat": { desc: "Single-leg squat finished with an explosive jump.", intensity: 5 },
+  "one-leg push-up": { desc: "Push-up performed with one leg lifted off the ground for extra core/stability challenge.", intensity: 4 },
+  "one-leg squat": { desc: "Pistol-style squat, balancing and lowering on one leg.", intensity: 4 },
+  "one-leg squat hops": { desc: "Single-leg squat followed by a small hop, landing softly.", intensity: 5 },
+  "one-leg squat touch": { desc: "Single-leg squat while reaching down to touch the floor.", intensity: 4 },
+  "one-leg triceps dip": { desc: "Triceps dip performed with one leg lifted off the ground.", intensity: 4 },
+  "one-leg wall sit": { desc: "Wall sit holding one leg extended straight out, balancing on the other.", intensity: 4 },
+  "plank": { desc: "Hold a straight line from head to heels, supported on forearms and toes.", intensity: 2 },
+  "plyo split squat": { desc: "Jumping lunge — switch legs mid-air between reps, landing softly each time.", intensity: 5 },
+  "power push-up": { desc: "Explosive push-up where your hands leave the ground at the top.", intensity: 5 },
+  "power squat": { desc: "Squat down, then explode upward into a jump.", intensity: 4 },
+  "push-up": { desc: "Hands under shoulders, lower your chest to the floor and press back up, keeping your body straight.", intensity: 3 },
+  "push-up & rotation": { desc: "After a push-up, rotate into a side plank, reaching one arm toward the ceiling.", intensity: 3 },
+  "quadriceps stretch": { desc: "Standing, pull one heel toward your glute to stretch the front of your thigh.", intensity: 1 },
+  "reverse crunch & hug": { desc: "Lift your hips and knees toward your chest, hugging them in at the top.", intensity: 3 },
+  "reverse lunge": { desc: "Step backward into a lunge instead of forward, then return to standing.", intensity: 3 },
+  "reverse lunge & knee lift": { desc: "Reverse lunge, then drive the rear knee up toward your chest as you stand.", intensity: 4 },
+  "reverse plank": { desc: "Sitting, hands behind you, lift your hips to form a straight line facing upward.", intensity: 3 },
+  "scissor kicks": { desc: "Lying on your back, legs straight, alternate small up-and-down scissor-like kicks.", intensity: 3 },
+  "shoulder roll forward": { desc: "Roll your shoulders forward in slow circles to loosen them up.", intensity: 1 },
+  "side lunge": { desc: "Step wide to one side and bend that knee, keeping the other leg straight.", intensity: 3 },
+  "side plank": { desc: "Balance on one forearm with your body in a straight line facing sideways.", intensity: 3 },
+  "side plank crunch": { desc: "From a side plank, crunch your top elbow and knee together, then extend back out.", intensity: 4 },
+  "side-to-side shuffle": { desc: "Quick, low lateral shuffle steps from side to side.", intensity: 4 },
+  "side-to-side hop": { desc: "Hop side to side, landing softly on both feet.", intensity: 4 },
+  "single-leg stretch": { desc: "Seated or lying, extend one leg and gently stretch it, then switch sides.", intensity: 1 },
+  "skater": { desc: "Bound laterally from one leg to the other, like a speed skater's stride.", intensity: 5 },
+  "spiderman push-up": { desc: "During a push-up, bring one knee out toward the same-side elbow.", intensity: 4 },
+  "squat": { desc: "Feet shoulder-width apart, push your hips back and bend your knees as if sitting into a chair.", intensity: 3 },
+  "squat & box": { desc: "Squat down, then throw a couple of punches ('boxing') as you stand.", intensity: 4 },
+  "squat thrusts": { desc: "Squat down, kick your feet back into a plank, then jump them back in — no push-up or jump at the end.", intensity: 5 },
+  "squats": { desc: "Feet shoulder-width apart, push your hips back and bend your knees as if sitting into a chair.", intensity: 3 },
+  "staggered push-up": { desc: "Push-up with one hand placed further forward than the other.", intensity: 3 },
+  "stand & box": { desc: "Standing in place, throw alternating punches with control.", intensity: 3 },
+  "step-up": { desc: "Step up onto a raised surface with one leg, then the other, alternating which leg leads.", intensity: 3 },
+  "superman": { desc: "Lie face down and lift your arms and legs off the floor at the same time.", intensity: 2 },
+  "swimmer": { desc: "Lie face down and alternate lifting opposite arm and leg, like a swimming kick.", intensity: 2 },
+  "torso rotation": { desc: "Standing, rotate your upper body gently from side to side.", intensity: 1 },
+  "triceps dip": { desc: "Hands on a chair or bench behind you, lower your body by bending your elbows, then push back up.", intensity: 3 },
+  "triceps stretch": { desc: "Raise one arm overhead, bend the elbow, and gently pull with the other hand.", intensity: 1 },
+  "v sit twist": { desc: "Balance in a V-sit position and rotate your torso side to side.", intensity: 3 },
+  "wall sit": { desc: "Back flat against a wall, slide down until your knees are at about 90° and hold.", intensity: 3 },
+  "windscreen wipers": { desc: "Lying down with legs raised, sweep them side to side like windscreen wipers.", intensity: 3 },
 };
 
-function renderExerciseGuide() {
-  const container = document.getElementById("exercise-list");
-  const query = (document.getElementById("exercise-search").value || "").trim().toLowerCase();
+// The spoken "get ready" announcements. veryFirst() is used once, right
+// at the start of a session (names the session itself); sectionStart()
+// is used at every later section boundary (Core, Cool-down); bookend()
+// is the plain "Next up" announcement for ordinary warm-up/cool-down
+// exercises. **double-asterisks** mark the word to accentuate (Section 6
+// of the tutorial explains why/how).
+const INTRO_MESSAGES = {
+  veryFirst: (session, sectionName, name) => `Get ready and set your watch for ${session}. ${sectionName}: **${name}**`,
+  sectionStart: (sectionName, name) => `Get ready for ${sectionName}: **${name}**`,
+  bookend: (name) => `Next up, **${name}**`,
+};
 
-  const all = [...WARMUP, ...allWorkouts, ...COOLDOWN];
-  const seen = new Map(); // canonical name -> true, to list each exercise once
-  all.forEach(w => {
-    const canon = canonicalExerciseName(w.name);
-    if (!seen.has(canon)) seen.set(canon, true);
-  });
+// ─── GOALS — end-of-workout milestone messages ──────────────────────
+// Checked right after every workout. If a goal's threshold gets crossed
+// BY FINISHING THIS SPECIFIC WORKOUT (i.e. you were under it before, at
+// or over it now), its message shows on the done screen, naming whoever
+// reached it — both names if both people logged this session and both
+// crossed it together.
+//
+// To add a new goal: add an object to this array. No other code needs
+// to change.
+//   id        — unique string, used so each goal's message fires once per session
+//   type      — "weekly_minutes" (this Mon-Sun week's total minutes, any
+//               section), "total_sessions" (all-time workout count), or
+//               "total_core_minutes" (all-time core-only minutes)
+//   threshold — the number to cross (minutes, or a count)
+//   message   — function(namesText) => the string to show; namesText is
+//               already formatted as "Joris", "Tina", or "Both Joris and Tina"
+const GOALS = [
+  { id: "week-30min", type: "weekly_minutes", threshold: 30, message: (names) => `${names} reached the 30-minute weekly goal! 🎯` },
+  { id: "week-45min", type: "weekly_minutes", threshold: 45, message: (names) => `${names} crushed 45 minutes this week! 💪` },
+  { id: "week-60min", type: "weekly_minutes", threshold: 60, message: (names) => `${names} hit a full hour this week — amazing! 🏆` },
+  { id: "sessions-50", type: "total_sessions", threshold: 50, message: (names) => `${names} just completed workout #50 overall! 🎊` },
+  { id: "sessions-100", type: "total_sessions", threshold: 100, message: (names) => `${names} just hit 100 workouts total! 🚀` },
+  { id: "core-24h", type: "total_core_minutes", threshold: 24 * 60, message: (names) => `${names} logged 24 hours of core exercise, all-time! 🔥` },
+];
 
-  const names = [...seen.keys()]
-    .filter(n => !query || n.toLowerCase().includes(query))
-    .sort((a, b) => a.localeCompare(b));
+// The weekly minutes chart draws a target line at the lowest weekly_minutes
+// goal above — editing GOALS moves this line automatically.
+const CHART_WEEKLY_TARGET = Math.min(...GOALS.filter(g => g.type === "weekly_minutes").map(g => g.threshold));
 
-  if (!names.length) {
-    container.innerHTML = `<div class="exercise-empty">No exercises match "${query}".</div>`;
-    return;
-  }
-
-  container.innerHTML = names.map(name => {
-    const info = EXERCISE_INFO[name.toLowerCase()];
-    const desc = info || "Move with control, keep your core engaged, and breathe steadily throughout.";
-    const icon = categoryIcon(name);
-    const link = `https://www.google.com/search?q=${encodeURIComponent(name + " exercise how to perform")}`;
-    return `
-      <div class="exercise-card">
-        <div class="exercise-icon">${icon}</div>
-        <div class="exercise-body">
-          <div class="exercise-name">${name}</div>
-          <div class="exercise-desc">${desc}</div>
-          <a class="exercise-link" href="${link}" target="_blank" rel="noopener">🔗 More info &amp; pictures</a>
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-// ─── CSV IMPORT ──────────────────────────────────────────────────
-function handleCSV(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      const lines = ev.target.result.split(/\r?\n/).filter(l => l.trim());
-      const parsed = [];
-      // Skip header row if first col is not a number
-      const startRow = isNaN(parseInt(lines[0].split(",")[0])) ? 1 : 0;
-      for (let i = startRow; i < lines.length; i++) {
-        // Handle quoted CSV fields
-        const cols = parseCSVLine(lines[i]);
-        if (cols.length < 3) continue;
-        const prep = parseInt(cols[0]);
-        const name = cols[1].trim();
-        const duration = parseInt(cols[2]);
-        const session = (cols[3] || "Algemeen").trim();
-        if (!name || isNaN(prep) || isNaN(duration)) continue;
-        parsed.push({ prep, name, duration, session });
-      }
-      if (parsed.length === 0) {
-        showError("Geen geldige rijen. Formaat: prep_s, naam, duur_s, sessie");
-        return;
-      }
-      allWorkouts = parsed;
-      hideError();
-      selectedSession = null;
-      showSessions();
-      switchTab("timer");
-    } catch(err) {
-      showError("Fout bij lezen CSV: " + err.message);
-    }
-  };
-  reader.readAsText(file, "UTF-8");
-  e.target.value = "";
-}
-
-function parseCSVLine(line) {
-  const result = [];
-  let cur = "", inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (c === '"') { inQuotes = !inQuotes; }
-    else if (c === ',' && !inQuotes) { result.push(cur); cur = ""; }
-    else { cur += c; }
-  }
-  result.push(cur);
-  return result;
-}
-
-function showError(msg) { showMessage(msg, false); }
-
-function showMessage(msg, isSuccess) {
-  const el = document.getElementById("error-banner");
-  el.textContent = (isSuccess ? "✅ " : "⚠️ ") + msg;
-  el.className = "error-banner" + (isSuccess ? " success" : "");
-  el.style.display = "block";
-  setTimeout(() => el.style.display = "none", 4000);
-}
-function hideError() {
-  document.getElementById("error-banner").style.display = "none";
-}
-
-// ─── STATS ───────────────────────────────────────────────────────
-function formatDuration(totalSecs) {
-  const h = Math.floor(totalSecs / 3600);
-  const m = Math.floor((totalSecs % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-}
-
-// Returns the Monday (start of ISO week) for a given date, as a Date at midnight local time.
-function weekStart(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  const day = d.getDay(); // 0=Sun..6=Sat
-  const diffToMonday = (day === 0 ? -6 : 1 - day);
-  d.setDate(d.getDate() + diffToMonday);
-  return d;
-}
-function weekKey(date) {
-  return weekStart(date).toISOString().slice(0, 10);
-}
-
-// A week only counts toward the streak once at least 2 sessions were
-// logged in it. The current (still in-progress) week is skipped rather
-// than breaking the streak, since it may still be completed.
-function calcWeekStreak(history) {
-  if (!history.length) return 0;
-  const counts = {};
-  history.forEach(h => {
-    const k = weekKey(h.date);
-    counts[k] = (counts[k] || 0) + 1;
-  });
-
-  let cursor = weekStart(new Date());
-  const currentKey = cursor.toISOString().slice(0, 10);
-  if (!counts[currentKey] || counts[currentKey] < 2) {
-    // This week hasn't hit 2 sessions yet — don't count it, but don't
-    // break the streak either; start checking from last week instead.
-    cursor.setDate(cursor.getDate() - 7);
-  }
-
-  let streak = 0;
-  let key = cursor.toISOString().slice(0, 10);
-  while (counts[key] >= 2) {
-    streak++;
-    cursor.setDate(cursor.getDate() - 7);
-    key = cursor.toISOString().slice(0, 10);
-  }
-  return streak;
-}
-
-function switchStatsUser(user) {
-  statsUser = user;
-  document.querySelectorAll(".stats-user-btn").forEach(b => {
-    b.classList.toggle("active", b.dataset.user === user);
-  });
-  document.querySelectorAll(".stats-panel").forEach(p => {
-    p.classList.toggle("active", p.dataset.user === user);
-  });
-  updateStatsDisplay();
-}
-
-function historyForUser(user) {
-  return workoutHistory.filter(h => h.user === user);
-}
-
-function historyForStatsUser() {
-  return historyForUser(statsUser);
-}
-
-function updateStatsDisplay() {
-  // Always refresh both people's panels — on iPad-width screens both are
-  // visible side by side at once, and on phones this is cheap enough to
-  // just always do regardless of which one is currently active.
-  ["J", "T"].forEach(user => {
-    const userHistory = historyForUser(user);
-    document.getElementById(`stat-total-${user}`).textContent = userHistory.length;
-    const totalSecs = userHistory.reduce((a, h) => a + (h.duration || 0), 0);
-    document.getElementById(`stat-time-${user}`).textContent = formatDuration(totalSecs);
-    document.getElementById(`stat-streak-${user}`).textContent = calcWeekStreak(userHistory) + "🔥";
-    renderWorkloadChart(user);
-    renderWeeklyMinutesChart(user);
-    renderSessionPieChart(user);
-  });
-}
-
-// ─── WORKLOAD TREND CHART (SVG bar chart of ratings, 1=light..5=heavy) ──
-// Graduated face scale for the 1-5 "how heavy did that feel" rating —
-// shared between the rating buttons on the done screen and the
-// workload trend chart's y-axis.
-const FACE_SCALE = ["😌", "🙂", "😅", "😓", "🥵"];
-
-function ratingColor(r) {
-  // green (light) -> yellow -> orange -> red (heavy)
-  return ["#10B981", "#84CC16", "#F59E0B", "#F97316", "#DC2626"][r - 1] || "#D1D5DB";
-}
-
-function renderWorkloadChart(user) {
-  const container = document.getElementById(`workload-chart-${user}`);
-  const rated = historyForUser(user).filter(h => h.rating); // every rated session for this person, oldest to newest
-  if (!rated.length) {
-    container.innerHTML = `<div class="chart-empty">${user} hasn't rated a workout yet — ratings will start showing the workload trend here.</div>`;
-    return;
-  }
-
-  const H = 130;
-  const AXIS_W = 22;               // fixed, never-scrolling y-axis column
-  const padL2 = 10, padR = 16, padTop = 22, padBottom = 22;
-  const chartH = H - padTop - padBottom;
-  const n = rated.length;
-  const barW = 14, gap = 20; // fixed per-point spacing — the chart grows wider and scrolls instead of squeezing points
-  const chartW = n * (barW + gap);
-  const scrollW = padL2 + chartW + padR;
-
-  // Y-axis: one face per rating level (1 = 😌 at the bottom, 5 = 🥵 at the top) —
-  // drawn in its own small fixed SVG so it stays visible while the data scrolls.
-  let yAxis = "";
-  for (let v = 1; v <= 5; v++) {
-    const gy = padTop + chartH - (v / 5) * chartH;
-    yAxis += `<text x="${AXIS_W - 6}" y="${(gy + 4).toFixed(1)}" text-anchor="end" class="chart-y-emoji">${FACE_SCALE[v - 1]}</text>`;
-  }
-
-  // Points are placed by their center x (same spacing as bars used), y by rating height
-  const points = rated.map((h, i) => {
-    const x = padL2 + i * (barW + gap) + barW / 2;
-    const y = padTop + chartH - (h.rating / 5) * chartH;
-    return { x, y, h };
-  });
-
-  const polylinePoints = points.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
-
-  let dots = "";
-  points.forEach((p) => {
-    const h = p.h;
-    const d = new Date(h.date);
-    const label = `${d.getDate()}/${d.getMonth() + 1}`;
-    dots += `
-      <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="5" fill="${ratingColor(h.rating)}" />
-      <text x="${p.x.toFixed(1)}" y="${(p.y - 10).toFixed(1)}" text-anchor="middle" class="chart-bar-value">${h.rating}</text>
-      <text x="${p.x.toFixed(1)}" y="${H - 6}" text-anchor="middle" class="chart-bar-label">${label}</text>
-    `;
-  });
-
-  container.innerHTML = `
-    <div style="display:flex; align-items:flex-start;">
-      <svg width="${AXIS_W}" height="${H}" style="flex-shrink:0; display:block;">
-        ${yAxis}
-      </svg>
-      <div class="chart-scroll" id="workload-scroll-${user}">
-        <svg width="${scrollW}" height="${H}">
-          <line x1="${padL2}" y1="${padTop + chartH}" x2="${scrollW - padR}" y2="${padTop + chartH}" stroke="var(--border)" stroke-width="1" />
-          <polyline points="${polylinePoints}" fill="none" stroke="var(--green)" stroke-width="2" />
-          ${dots}
-        </svg>
-      </div>
-    </div>
-  `;
-
-  // Start scrolled to the right, showing the most recent session by default.
-  const scrollEl = document.getElementById(`workload-scroll-${user}`);
-  if (scrollEl) scrollEl.scrollLeft = scrollEl.scrollWidth;
-}
-
-// ─── WEEKLY MINUTES CHART (bar per Monday-start week) ─────────────
-// Returns midnight-Monday of the week containing date `d`.
-function startOfWeekMonday(d) {
-  const date = new Date(d);
-  date.setHours(0, 0, 0, 0);
-  const day = date.getDay(); // 0=Sun, 1=Mon, ... 6=Sat
-  const diff = (day === 0 ? -6 : 1) - day; // shift back to Monday
-  date.setDate(date.getDate() + diff);
-  return date;
-}
-
-// Colors for the 3 stacked segments — core at the bottom, then warm-up,
-// then cool-down on top.
-const SECTION_COLORS = { core: "#10B981", warmup: "#F59E0B", cooldown: "#3B82F6" };
-
-function renderWeeklyMinutesChart(user) {
-  const container = document.getElementById(`weekly-chart-${user}`);
-  const userHistory = historyForUser(user);
-  if (!userHistory.length) {
-    container.innerHTML = `<div class="chart-empty">No sessions yet for ${user} — weekly totals will show up here.</div>`;
-    return;
-  }
-
-  // Group sessions into Monday-start weeks, summing minutes per section
-  // (core/warm-up/cool-down) and counting sessions per week. Older
-  // history entries saved before the breakdown existed count entirely
-  // as core minutes, since that's the bulk of any session anyway.
-  const weeks = new Map(); // key: week-start date string -> { weekStart, core, warmup, cooldown, sessions }
-  userHistory.forEach(h => {
-    const weekStart = startOfWeekMonday(h.date);
-    const key = weekStart.toISOString().slice(0, 10);
-    if (!weeks.has(key)) weeks.set(key, { weekStart, core: 0, warmup: 0, cooldown: 0, sessions: 0 });
-    const entry = weeks.get(key);
-    const hasBreakdown = h.coreDuration != null || h.warmupDuration != null || h.cooldownDuration != null;
-    if (hasBreakdown) {
-      entry.core += (h.coreDuration || 0) / 60;
-      entry.warmup += (h.warmupDuration || 0) / 60;
-      entry.cooldown += (h.cooldownDuration || 0) / 60;
-    } else {
-      entry.core += (h.duration || 0) / 60; // older entry, no breakdown saved — count as core
-    }
-    entry.sessions += 1;
-  });
-
-  const sorted = Array.from(weeks.values()).sort((a, b) => a.weekStart - b.weekStart);
-  const recent = sorted.slice(-8); // most recent 8 weeks for this person
-
-  const W = 320, H = 150;
-  const padL = 26, padR = 8, padTop = 26, padBottom = 22;
-  const chartW = W - padL - padR;
-  const chartH = H - padTop - padBottom;
-  const n = recent.length;
-  const gap = 10;
-  const barW = Math.max(14, (chartW - gap * (n - 1)) / n);
-  const maxMinutes = Math.max(...recent.map(w => w.core + w.warmup + w.cooldown), 1);
-
-  // Round the axis top up to the next 10-minute step so gridlines land on
-  // clean values (10, 20, 30…) and bars scale against that same top.
-  const GRID_STEP = 10;
-  const axisMax = Math.max(GRID_STEP, Math.ceil(maxMinutes / GRID_STEP) * GRID_STEP);
-
-  let grid = "";
-  for (let v = GRID_STEP; v <= axisMax; v += GRID_STEP) {
-    const gy = padTop + chartH - (v / axisMax) * chartH;
-    grid += `
-      <line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W - padR}" y2="${gy.toFixed(1)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="2,3" />
-      <text x="${(padL - 6).toFixed(1)}" y="${(gy + 3).toFixed(1)}" text-anchor="end" class="chart-bar-label">${v}</text>
-    `;
-  }
-
-  let bars = "";
-  recent.forEach((w, i) => {
-    const x = padL + i * (barW + gap);
-    const cx = x + barW / 2;
-    const total = w.core + w.warmup + w.cooldown;
-
-    // Stack bottom-up: core first, then warm-up, then cool-down on top.
-    let cumulative = 0;
-    [["core", w.core], ["warmup", w.warmup], ["cooldown", w.cooldown]].forEach(([section, minutes]) => {
-      if (minutes <= 0) return;
-      const segH = (minutes / axisMax) * chartH;
-      const segY = padTop + chartH - ((cumulative + minutes) / axisMax) * chartH;
-      cumulative += minutes;
-      bars += `<rect x="${x.toFixed(1)}" y="${segY.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(1, segH).toFixed(1)}" fill="${SECTION_COLORS[section]}" />`;
-    });
-
-    const topY = padTop + chartH - (total / axisMax) * chartH;
-    const label = `${w.weekStart.getDate()}/${w.weekStart.getMonth() + 1}`;
-    bars += `
-      <text x="${cx.toFixed(1)}" y="${(topY - 8).toFixed(1)}" text-anchor="middle" class="chart-bar-value">${w.sessions}</text>
-      <text x="${cx.toFixed(1)}" y="${(H - 6).toFixed(1)}" text-anchor="middle" class="chart-bar-label">${label}</text>
-    `;
-  });
-
-  const legend = `
-    <div class="pie-legend-row" style="justify-content:center; gap:14px; margin-top:4px;">
-      <span style="display:flex; align-items:center; gap:4px;"><span class="pie-legend-dot" style="background:${SECTION_COLORS.core}"></span>Core</span>
-      <span style="display:flex; align-items:center; gap:4px;"><span class="pie-legend-dot" style="background:${SECTION_COLORS.warmup}"></span>Warm-up</span>
-      <span style="display:flex; align-items:center; gap:4px;"><span class="pie-legend-dot" style="background:${SECTION_COLORS.cooldown}"></span>Cool-down</span>
-    </div>
-  `;
-
-  container.innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block;">
-      ${grid}
-      <line x1="${padL}" y1="${padTop + chartH}" x2="${W - padR}" y2="${padTop + chartH}" stroke="var(--border)" stroke-width="1" />
-      ${bars}
-    </svg>
-    ${legend}
-  `;
-}
-
-// ─── SESSION FREQUENCY CHART (donut: how many times each session was done) ──
-// A fixed color palette, cycled through if someone's tried more distinct
-// sessions than there are colors.
-const PIE_COLORS = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#14B8A6", "#F97316"];
-
-function renderSessionPieChart(user) {
-  const container = document.getElementById(`session-pie-${user}`);
-  const userHistory = historyForUser(user);
-  if (!userHistory.length) {
-    container.innerHTML = `<div class="chart-empty">No sessions yet for ${user} — this will show which sessions you do most.</div>`;
-    return;
-  }
-
-  // Count how many times each session name appears, then sort most-done first.
-  const counts = new Map();
-  userHistory.forEach(h => counts.set(h.session, (counts.get(h.session) || 0) + 1));
-  const rows = Array.from(counts.entries())
-    .map(([session, count]) => ({ session, count }))
-    .sort((a, b) => b.count - a.count);
-
-  const total = rows.reduce((a, r) => a + r.count, 0);
-
-  // Donut chart drawn as one circle per slice, using stroke-dasharray to
-  // show only that slice's share of the circumference — no SVG arc-path
-  // math needed. -90deg start rotation makes the first slice begin at
-  // the top instead of the 3 o'clock position.
-  const SIZE = 140, R = 52, CX = SIZE / 2, CY = SIZE / 2;
-  const circumference = 2 * Math.PI * R;
-  let offset = 0;
-  let slices = "";
-  rows.forEach((r, i) => {
-    const share = r.count / total;
-    const segLen = share * circumference;
-    const color = PIE_COLORS[i % PIE_COLORS.length];
-    slices += `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${color}" stroke-width="22"
-      stroke-dasharray="${segLen.toFixed(2)} ${(circumference - segLen).toFixed(2)}"
-      stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 ${CX} ${CY})" />`;
-    offset += segLen;
-  });
-
-  const legend = rows.map((r, i) => `
-    <div class="pie-legend-row">
-      <span class="pie-legend-dot" style="background:${PIE_COLORS[i % PIE_COLORS.length]}"></span>
-      <span class="pie-legend-name">${r.session}</span>
-      <span class="pie-legend-count">${r.count}×</span>
-    </div>
-  `).join("");
-
-  container.innerHTML = `
-    <div class="pie-wrap">
-      <svg viewBox="0 0 ${SIZE} ${SIZE}" style="width:${SIZE}px; height:${SIZE}px; flex-shrink:0;">
-        ${slices}
-        <text x="${CX}" y="${CY - 4}" text-anchor="middle" class="chart-bar-value" style="font-size:16px;">${total}</text>
-        <text x="${CX}" y="${CY + 12}" text-anchor="middle" class="chart-bar-label">total</text>
-      </svg>
-      <div class="pie-legend">${legend}</div>
-    </div>
-  `;
-}
-
-// ─── HISTORY CSV EXPORT / IMPORT ──────────────────────────────────
-function csvEscape(str) {
-  str = String(str == null ? "" : str);
-  return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
-}
-
-// Shares/saves a file the smoothest way the browser supports. On iOS,
-// navigator.share with a file goes straight to the native share sheet —
-// "Save to Files" is right there, one tap, no detour through Downloads.
-// Falls back to the classic <a download> blob trick where Web Share
-// isn't available (desktop browsers, older Safari).
-async function shareOrDownloadFile(blob, filename, mimeType) {
-  try {
-    const file = new File([blob], filename, { type: mimeType });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file] });
-      return;
-    }
-  } catch (err) {
-    // User cancelled the share sheet, or share failed — fall through to download.
-  }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function exportHistoryCSV() {
-  if (!workoutHistory.length) {
-    showMessage("No workout history yet to export.", false);
-    return;
-  }
-  const rows = [["date", "session", "duration_seconds", "core_seconds", "warmup_seconds", "cooldown_seconds", "rating", "user"].join(",")];
-  workoutHistory.forEach(h => {
-    const ratingVal = h.rating == null ? "" : h.rating;
-    const userVal = h.user == null ? "" : h.user;
-    const coreVal = h.coreDuration == null ? "" : h.coreDuration;
-    const warmupVal = h.warmupDuration == null ? "" : h.warmupDuration;
-    const cooldownVal = h.cooldownDuration == null ? "" : h.cooldownDuration;
-    rows.push([h.date, csvEscape(h.session), h.duration, coreVal, warmupVal, cooldownVal, ratingVal, csvEscape(userVal)].join(","));
-  });
-  const blob = new Blob([rows.join("\n")], { type: "text/csv" });
-  const filename = "workout-history-" + new Date().toISOString().slice(0, 10) + ".csv";
-  shareOrDownloadFile(blob, filename, "text/csv");
-}
-
-function handleHistoryCSV(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      const lines = ev.target.result.split(/\r?\n/).filter(l => l.trim());
-      const hasHeader = lines[0] && lines[0].toLowerCase().startsWith("date");
-      const startRow = hasHeader ? 1 : 0;
-      // Newer exports have 3 extra columns (core/warmup/cooldown seconds)
-      // inserted before rating/user; detect that from the header so older
-      // exports still import correctly at their original column positions.
-      const hasBreakdown = hasHeader && lines[0].toLowerCase().includes("core_seconds");
-      const imported = [];
-      for (let i = startRow; i < lines.length; i++) {
-        const cols = parseCSVLine(lines[i]);
-        if (cols.length < 3) continue;
-        const date = cols[0].trim();
-        const session = cols[1].trim();
-        const duration = parseInt(cols[2]);
-        const ratingIdx = hasBreakdown ? 6 : 3;
-        const userIdx = hasBreakdown ? 7 : 4;
-        const ratingRaw = (cols[ratingIdx] || "").trim();
-        const rating = ratingRaw !== "" ? parseInt(ratingRaw) : null;
-        const user = (cols[userIdx] || "").trim() || undefined; // older exports may not have a user column
-        if (!date || !session || isNaN(duration)) continue;
-        const entry = { date, session, duration, rating: isNaN(rating) ? null : rating, user };
-        if (hasBreakdown) {
-          const coreRaw = (cols[3] || "").trim();
-          const warmupRaw = (cols[4] || "").trim();
-          const cooldownRaw = (cols[5] || "").trim();
-          if (coreRaw !== "") entry.coreDuration = parseInt(coreRaw);
-          if (warmupRaw !== "") entry.warmupDuration = parseInt(warmupRaw);
-          if (cooldownRaw !== "") entry.cooldownDuration = parseInt(cooldownRaw);
-        }
-        imported.push(entry);
-      }
-      if (!imported.length) {
-        showMessage("No valid rows found. Format: date, session, duration_seconds, core_seconds, warmup_seconds, cooldown_seconds, rating, user", false);
-        return;
-      }
-      const seen = new Set(workoutHistory.map(h => h.date + "|" + h.session + "|" + h.duration + "|" + (h.user == null ? "" : h.user)));
-      let added = 0;
-      imported.forEach(h => {
-        const key = h.date + "|" + h.session + "|" + h.duration + "|" + (h.user == null ? "" : h.user);
-        if (!seen.has(key)) {
-          workoutHistory.push(h);
-          seen.add(key);
-          added++;
-        }
-      });
-      workoutHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
-      saveHistoryToStorage();
-      updateStatsDisplay();
-      showMessage(`Imported ${added} new entr${added === 1 ? "y" : "ies"} (${imported.length - added} duplicate${imported.length - added === 1 ? "" : "s"} skipped).`, true);
-    } catch (err) {
-      showMessage("Error reading history CSV: " + err.message, false);
-    }
-  };
-  reader.readAsText(file, "UTF-8");
-  e.target.value = "";
-}
-
-function resetHistory() {
-  if (!confirm("Clear all workout history for BOTH people on this device? Export a CSV backup first if you want to keep it — this can't be undone.")) return;
-  workoutHistory = [];
-  saveHistoryToStorage();
-  updateStatsDisplay();
-  showMessage("History cleared.", true);
-}
+// ══════════════════════════════════════════════════════════════════
+// END OF EDITABLE CONTENT — app logic resumes below.
+// ══════════════════════════════════════════════════════════════════
 
 // ─── INIT ────────────────────────────────────────────────────────
 document.getElementById("chk-warmup").checked = includeWarmup;
