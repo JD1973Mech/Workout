@@ -258,6 +258,15 @@
   .exercise-empty { text-align:center; color:var(--muted); font-size:13px; padding:30px 0; }
 
   .history-user-toggle { display:flex; gap:8px; width:100%; max-width:472px; }
+  .add-session-card {
+    display:flex; flex-direction:column; gap:8px; background:var(--card);
+    border:1.5px solid var(--border); border-radius:14px; padding:16px; box-shadow:var(--shadow);
+  }
+  .add-session-label { font-size:11px; font-weight:700; letter-spacing:1px; color:var(--muted); margin-top:4px; }
+  .add-session-row { display:flex; gap:18px; font-size:13px; color:var(--text); }
+  .add-session-row label { display:flex; align-items:center; gap:6px; }
+  .add-session-actions { display:flex; gap:10px; margin-top:8px; }
+  select.exercise-search { appearance:none; -webkit-appearance:none; }
   .history-row {
     display:flex; align-items:center; gap:10px; background:var(--card);
     border:1.5px solid var(--border); border-radius:14px; padding:12px 14px; box-shadow:var(--shadow);
@@ -273,9 +282,15 @@
 
   .stats-grid { display:flex; gap:10px; width:100%; }
   .stat-card {
+    position:relative;
     flex:1; background:var(--card); border:1.5px solid var(--border);
     border-radius:16px; padding:18px 10px; text-align:center;
     box-shadow: var(--shadow);
+  }
+  .stat-best-badge {
+    position:absolute; top:6px; right:8px; font-size:10px; font-weight:700;
+    color:var(--muted); background:var(--green-light); border-radius:6px;
+    padding:2px 5px; line-height:1.3;
   }
   .stat-value { font-size:26px; font-weight:800; color:var(--text); }
   .stat-label { font-size:10px; font-weight:700; letter-spacing:1.2px; color:var(--muted); margin-top:6px; }
@@ -526,6 +541,7 @@
             <div class="stat-label">TOTAL TIME</div>
           </div>
           <div class="stat-card">
+            <div class="stat-best-badge" id="stat-best-streak-Joris">best: 0</div>
             <div class="stat-value" id="stat-streak-Joris">0🔥</div>
             <div class="stat-label">WEEK STREAK</div>
           </div>
@@ -559,6 +575,7 @@
             <div class="stat-label">TOTAL TIME</div>
           </div>
           <div class="stat-card">
+            <div class="stat-best-badge" id="stat-best-streak-Tina">best: 0</div>
             <div class="stat-value" id="stat-streak-Tina">0🔥</div>
             <div class="stat-label">WEEK STREAK</div>
           </div>
@@ -610,6 +627,40 @@
       <button class="stats-user-btn" data-user="Joris" onclick="switchHistoryFilter('Joris')">🧑 Joris</button>
       <button class="stats-user-btn" data-user="Tina" onclick="switchHistoryFilter('Tina')">👨 Tina</button>
     </div>
+    <button class="btn-csv-action" onclick="toggleAddSessionForm()" id="btn-add-session">➕ Log a forgotten session</button>
+
+    <div id="add-session-form" class="add-session-card" style="display:none">
+      <label class="add-session-label">Session</label>
+      <select id="manual-session-select" class="exercise-search"></select>
+
+      <label class="add-session-label">Date</label>
+      <input type="date" id="manual-session-date" class="exercise-search">
+
+      <div class="add-session-row">
+        <label><input type="checkbox" id="manual-warmup" checked> Include warm-up</label>
+        <label><input type="checkbox" id="manual-cooldown" checked> Include cool-down</label>
+      </div>
+
+      <div class="add-session-row">
+        <label><input type="checkbox" id="manual-user-j" checked> 🧑 Joris</label>
+        <label><input type="checkbox" id="manual-user-t"> 👨 Tina</label>
+      </div>
+
+      <label class="add-session-label">How it felt (optional)</label>
+      <div class="sweat-row" id="manual-rating-row">
+        <span class="sweat" data-v="1" onclick="setManualRating(1)">😌</span>
+        <span class="sweat" data-v="2" onclick="setManualRating(2)">🙂</span>
+        <span class="sweat" data-v="3" onclick="setManualRating(3)">😅</span>
+        <span class="sweat" data-v="4" onclick="setManualRating(4)">😓</span>
+        <span class="sweat" data-v="5" onclick="setManualRating(5)">🥵</span>
+      </div>
+
+      <div class="add-session-actions">
+        <button class="btn-start-session" onclick="saveManualSession()" style="flex:1;">💾 Save</button>
+        <button class="btn-reset-history" onclick="toggleAddSessionForm()" style="flex:1;">Cancel</button>
+      </div>
+    </div>
+
     <div class="list-hint">Tap 🗑 to remove a single mistaken session — this only deletes that one entry, not your whole history.</div>
     <div id="history-list"></div>
   </div>
@@ -961,10 +1012,26 @@ function onUserToggleChange(who) {
 
 function renderSessionCards() {
   buildSessions();
-  const keys = Object.keys(sessions);
   const container = document.getElementById("session-cards");
   container.innerHTML = "";
   container.style.cssText = "width:100%;max-width:472px;display:flex;flex-direction:column;gap:12px;";
+
+  // "Original 7 Minute" always comes first; everything else sorted by
+  // duration (shortest first), then by estimated intensity (lightest
+  // first) as a tiebreaker when two sessions take the same time.
+  const keys = Object.keys(sessions)
+    .map(name => ({
+      name,
+      dur: sessionPreviewTotal(name, includeWarmup, includeCooldown).total,
+      intensity: estimateSessionIntensity(name) || 0,
+    }))
+    .sort((a, b) => {
+      if (a.name === "Original 7 Minute") return -1;
+      if (b.name === "Original 7 Minute") return 1;
+      if (a.dur !== b.dur) return a.dur - b.dur;
+      return a.intensity - b.intensity;
+    })
+    .map(s => s.name);
 
   keys.forEach((name, i) => {
     const main = sessions[name];
@@ -1123,48 +1190,50 @@ function startPhase(idx, ph) {
       introText = pickPhrase(PREP_PHRASES)(spokenName);
     }
 
-    // Don't start the numeric countdown (beeps / "Three, Two, One") until
-    // this announcement has fully finished speaking — otherwise a long
-    // session or exercise name can get talked over and cut off partway
-    // through by the countdown starting on a fixed schedule.
+    // The beep/number countdown and the transition into the exercise
+    // still wait for this announcement to fully finish speaking (so a
+    // long session or exercise name never gets cut off) — but the circle
+    // itself ticks and animates right away, below, so it never looks
+    // frozen while the announcement plays.
     awaitingPrepSpeech = true;
-    speak(introText, () => startPrepCountdown(idx, isSwitchEx));
-  } else {
-    timerInterval = setInterval(tick, 1000);
+    speak(introText, () => {
+      // Guard: the person may have paused, skipped, or moved on while
+      // the announcement was still playing.
+      if (idx !== currentIdx || phase !== "prep") return;
+      awaitingPrepSpeech = false;
+      if (isSwitchEx) { advance(); return; }
+      // Reset to a short, clean "Three, Two, One" window now that speech
+      // is done — fewer numbers if this exercise's own prep budget was
+      // shorter than that, so a long announcement never stretches the
+      // countdown out past what the exercise was originally allotted.
+      seconds = Math.min(3, totalSeconds);
+      totalSeconds = seconds; // circle now fills/empties over just this short countdown
+      updateCircle();
+    });
   }
-}
 
-// Fires once the prep announcement has fully finished speaking. Starts a
-// short countdown — "Three, Two, One" normally, or fewer numbers if this
-// exercise's own prep budget was shorter than that (so a long
-// announcement never stretches the countdown out past what that
-// exercise was originally allotted). "Switch..." exercises skip the
-// countdown entirely and go straight to work, as before.
-function startPrepCountdown(idx, isSwitchEx) {
-  // Guard: the person may have paused, skipped, or moved on while the
-  // announcement was still playing.
-  if (idx !== currentIdx || phase !== "prep") return;
-  awaitingPrepSpeech = false;
-  if (isSwitchEx) {
-    advance();
-    return;
-  }
-  seconds = Math.min(3, totalSeconds);
-  totalSeconds = seconds; // circle now fills/empties over just this short countdown
-  updateCircle();
-  if (!running) return; // paused during the announcement — togglePause() will resume this when the person taps play again
-  clearInterval(timerInterval);
   timerInterval = setInterval(tick, 1000);
 }
 
 function tick() {
   if (!running) return;
-  seconds--;
 
   const w = currentWorkouts[currentIdx];
   const bookend = isBookend(currentIdx);
   const sectionStartPrep = phase === "prep" && isSectionStart(currentIdx, mainStartIdx, mainEndIdx);
   const isSwitchEx = w && /^switch/i.test(w.name);
+
+  // Still speaking the prep announcement: keep the circle visibly
+  // ticking down (so it never looks frozen) but don't beep/speak numbers
+  // and don't let it actually finish — floor at 1 and wait. The
+  // speak() callback above takes over for real once the announcement ends.
+  if (phase === "prep" && awaitingPrepSpeech) {
+    if (seconds > 1) seconds--;
+    updateCircle();
+    return;
+  }
+
+  seconds--;
 
   // Mid-workout motivations only apply to the core session
   if (!bookend) checkMidMotivation();
@@ -1261,6 +1330,21 @@ function checkGoalsAndRender(users, newEntryByUser) {
     messages.push(goal.message(names));
   });
 
+  // Week-streak record — a moving target (your own previous best), so it
+  // isn't a GOALS entry; see the comment next to WEEK_STREAK_RECORD_MESSAGE.
+  const streakRecordUsers = users.filter(u => {
+    const fullHistory = workoutHistory.filter(h => h.user === u);
+    const historyBefore = fullHistory.filter(h => h !== newEntryByUser[u]);
+    const bestBefore = calcBestWeekStreak(historyBefore);
+    const streakAfter = calcWeekStreak(fullHistory);
+    return streakAfter >= WEEK_STREAK_MIN_SESSIONS && streakAfter > bestBefore;
+  });
+  if (streakRecordUsers.length) {
+    const names = streakRecordUsers.length > 1 ? `Both ${streakRecordUsers.join(" and ")}` : streakRecordUsers[0];
+    const newStreak = calcWeekStreak(workoutHistory.filter(h => h.user === streakRecordUsers[0]));
+    messages.push(WEEK_STREAK_RECORD_MESSAGE(names, newStreak));
+  }
+
   container.innerHTML = messages.map(m => `<div class="achievement-banner">${m}</div>`).join("");
   return messages;
 }
@@ -1272,6 +1356,21 @@ function stripEmojiForSpeech(text) {
   return text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "").trim();
 }
 
+// Splits an exercise list's total time into warm-up / core / cool-down
+// seconds, using the same section-boundary logic the live announcements
+// use. Shared by finishWorkout() (for a live run) and saveManualSession()
+// (for a backfilled "forgotten session" entry in the History tab).
+function computeDurationBreakdown(list, mainStart, mainEnd) {
+  let warmupSecs = 0, coreSecs = 0, cooldownSecs = 0;
+  list.forEach((w, i) => {
+    const secs = prepSecondsFor(i, w) + w.duration;
+    if (i < mainStart) warmupSecs += secs;
+    else if (i >= mainEnd) cooldownSecs += secs;
+    else coreSecs += secs;
+  });
+  return { total: warmupSecs + coreSecs + cooldownSecs, core: coreSecs, warmup: warmupSecs, cooldown: cooldownSecs };
+}
+
 function finishWorkout() {
   phase = "done";
   running = false;
@@ -1279,18 +1378,9 @@ function finishWorkout() {
   playBeep(523, 0.1); setTimeout(() => playBeep(659, 0.1), 120); setTimeout(() => playBeep(784, 0.3), 240);
   document.getElementById("timer-screen").style.display = "none";
   document.getElementById("done-screen").style.display = "block";
-  const total = currentWorkouts.reduce((a, w, i) => a + prepSecondsFor(i, w) + w.duration, 0);
-
-  // Split that same total into warm-up / core / cool-down seconds, using
-  // the same section boundaries (mainStartIdx/mainEndIdx) the live
-  // announcements use — this is what feeds the stacked weekly chart.
-  let warmupSecs = 0, coreSecs = 0, cooldownSecs = 0;
-  currentWorkouts.forEach((w, i) => {
-    const secs = prepSecondsFor(i, w) + w.duration;
-    if (i < mainStartIdx) warmupSecs += secs;
-    else if (i >= mainEndIdx) cooldownSecs += secs;
-    else coreSecs += secs;
-  });
+  const breakdown = computeDurationBreakdown(currentWorkouts, mainStartIdx, mainEndIdx);
+  const total = breakdown.total;
+  const coreSecs = breakdown.core, warmupSecs = breakdown.warmup, cooldownSecs = breakdown.cooldown;
 
   const users = sessionUsers.length ? sessionUsers : ["Joris"]; // safety fallback, shouldn't normally happen
   document.getElementById("done-sub").textContent =
@@ -1388,9 +1478,7 @@ function togglePause() {
   if (running) {
     btn.textContent = "⏸ PAUSE";
     btn.className = "btn-main pause";
-    // If a prep announcement is still being spoken, don't start ticking
-    // yet — startPrepCountdown() will do that itself once speech ends.
-    if (!awaitingPrepSpeech) timerInterval = setInterval(tick, 1000);
+    timerInterval = setInterval(tick, 1000);
   } else {
     btn.textContent = "▶ RESUME";
     btn.className = "btn-main resume";
@@ -1798,6 +1886,10 @@ function weekKey(date) {
 // A week only counts toward the streak once at least 2 sessions were
 // logged in it. The current (still in-progress) week is skipped rather
 // than breaking the streak, since it may still be completed.
+// A week only counts toward the streak once at least this many sessions
+// were logged in it.
+const WEEK_STREAK_MIN_SESSIONS = 3;
+
 function calcWeekStreak(history) {
   if (!history.length) return 0;
   const counts = {};
@@ -1808,20 +1900,47 @@ function calcWeekStreak(history) {
 
   let cursor = weekStart(new Date());
   const currentKey = cursor.toISOString().slice(0, 10);
-  if (!counts[currentKey] || counts[currentKey] < 2) {
-    // This week hasn't hit 2 sessions yet — don't count it, but don't
+  if (!counts[currentKey] || counts[currentKey] < WEEK_STREAK_MIN_SESSIONS) {
+    // This week hasn't hit the minimum yet — don't count it, but don't
     // break the streak either; start checking from last week instead.
     cursor.setDate(cursor.getDate() - 7);
   }
 
   let streak = 0;
   let key = cursor.toISOString().slice(0, 10);
-  while (counts[key] >= 2) {
+  while (counts[key] >= WEEK_STREAK_MIN_SESSIONS) {
     streak++;
     cursor.setDate(cursor.getDate() - 7);
     key = cursor.toISOString().slice(0, 10);
   }
   return streak;
+}
+
+// The longest run of CONSECUTIVE qualifying weeks (3+ sessions each)
+// ever achieved — not just the current ongoing streak. Used for the
+// small "best ever" badge on the Week Streak stat card, and to detect a
+// new record (see WEEK_STREAK_RECORD_MESSAGE in the editable content
+// section, and checkGoalsAndRender below).
+function calcBestWeekStreak(history) {
+  if (!history.length) return 0;
+  const counts = {};
+  history.forEach(h => {
+    const k = weekKey(h.date);
+    counts[k] = (counts[k] || 0) + 1;
+  });
+  const qualifyingWeeks = Object.keys(counts)
+    .filter(k => counts[k] >= WEEK_STREAK_MIN_SESSIONS)
+    .sort();
+
+  let best = 0, current = 0, prevDate = null;
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  qualifyingWeeks.forEach(k => {
+    const d = new Date(k);
+    current = (prevDate && d.getTime() - prevDate.getTime() === WEEK_MS) ? current + 1 : 1;
+    best = Math.max(best, current);
+    prevDate = d;
+  });
+  return best;
 }
 
 function switchStatsUser(user) {
@@ -1853,6 +1972,7 @@ function updateStatsDisplay() {
     const totalSecs = userHistory.reduce((a, h) => a + (h.duration || 0), 0);
     document.getElementById(`stat-time-${user}`).textContent = formatDuration(totalSecs);
     document.getElementById(`stat-streak-${user}`).textContent = calcWeekStreak(userHistory) + "🔥";
+    document.getElementById(`stat-best-streak-${user}`).textContent = "best: " + calcBestWeekStreak(userHistory);
     renderWorkloadChart(user);
     renderWeeklyMinutesChart(user);
     renderSessionPieChart(user);
@@ -2270,6 +2390,74 @@ function handleHistoryCSV(e) {
 
 // ─── HISTORY EDITOR (delete individual mistaken sessions) ──────────
 let historyFilter = "all"; // "all" | "Joris" | "Tina"
+let manualRating = null;   // optional rating picked in the "log a forgotten session" form
+
+function toggleAddSessionForm() {
+  const form = document.getElementById("add-session-form");
+  const opening = form.style.display === "none";
+  if (opening) populateManualSessionForm();
+  form.style.display = opening ? "flex" : "none";
+}
+
+function populateManualSessionForm() {
+  const select = document.getElementById("manual-session-select");
+  select.innerHTML = Object.keys(sessions).sort().map(name => `<option value="${name}">${name}</option>`).join("");
+  document.getElementById("manual-session-date").value = new Date().toISOString().slice(0, 10);
+  document.getElementById("manual-warmup").checked = true;
+  document.getElementById("manual-cooldown").checked = true;
+  document.getElementById("manual-user-j").checked = true;
+  document.getElementById("manual-user-t").checked = false;
+  setManualRating(null);
+}
+
+function setManualRating(v) {
+  manualRating = v;
+  document.querySelectorAll("#manual-rating-row .sweat").forEach(s => {
+    s.classList.toggle("filled", v != null && parseInt(s.dataset.v) === v);
+  });
+}
+
+// Backfills a session you forgot to log live — builds the exact same
+// {total, core, warmup, cooldown} breakdown a real finished workout
+// would get (see computeDurationBreakdown), just computed from the
+// session's definition instead of a live currentWorkouts run.
+function saveManualSession() {
+  const sessionName = document.getElementById("manual-session-select").value;
+  const dateStr = document.getElementById("manual-session-date").value;
+  if (!sessionName || !dateStr) { showError("Pick a session and a date first."); return; }
+
+  const includeWarm = document.getElementById("manual-warmup").checked;
+  const includeCool = document.getElementById("manual-cooldown").checked;
+  const users = [];
+  if (document.getElementById("manual-user-j").checked) users.push("Joris");
+  if (document.getElementById("manual-user-t").checked) users.push("Tina");
+  if (!users.length) { showError("Pick at least one person."); return; }
+
+  const composed = composeSession(sessionName, includeWarm, includeCool);
+  const breakdown = computeDurationBreakdown(composed.list, composed.mainStart, composed.mainEnd);
+
+  // Noon on the picked date, so it reliably falls in the intended
+  // Monday-start week regardless of the device's time zone.
+  const isoDate = new Date(dateStr + "T12:00:00").toISOString();
+
+  users.forEach(u => {
+    workoutHistory.push({
+      date: isoDate,
+      session: sessionName,
+      duration: breakdown.total,
+      coreDuration: breakdown.core,
+      warmupDuration: breakdown.warmup,
+      cooldownDuration: breakdown.cooldown,
+      rating: manualRating,
+      user: u
+    });
+  });
+  saveHistoryToStorage();
+  toggleAddSessionForm();
+  renderHistoryEditor();
+  updateStatsDisplay();
+  showMessage(`Logged "${sessionName}" for ${users.join(" & ")}.`, true);
+}
 
 function switchHistoryFilter(filter) {
   historyFilter = filter;
@@ -3041,12 +3229,54 @@ let allWorkouts = [
   { prep:5, name:"One-Leg Bridge -- Switch Leg",           duration:32, session:"Short Cycle - Medium" },
   { prep:5, name:"One-Leg Squat -- Switch Leg",            duration:32, session:"Short Cycle - Medium" },
   { prep:5, name:"Reverse Lunge & Knee Lift",          duration:30, session:"Short Cycle - Medium" },
-
- // ── Test ──────────────────────────────────────
-  { prep:8,  name:"Jumping Jacks",     duration:10, session:"TestA" },
-  { prep:5,  name:"Side Plank -- Switch Side", duration:33, session:"TestA" },
-  { prep:5,  name:"Squats",            duration:10, session:"TestA" },
-  { prep:5,  name:"Plank",             duration:10, session:"TestA" },
+{ prep:5, name:"First Cycle - Side-to-side Shuffle", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Wall Sit", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Superman", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"High Knees", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"Double 8 Minute Workout"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Power Squat", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Plank", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Second Cycle - Side-to-side Shuffle", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Wall Sit", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Superman", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"High Knees", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Chair Split Squat -- Switch Leg", duration:33, session:"Double 8 Minute Workout"},
+{ prep:5, name:"One-Leg Triceps Dip -- Switch Leg", duration:32, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Bicycle Crunch", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Mountain Climbers", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Power Squat", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"Plank", duration:30, session:"Double 8 Minute Workout"},
+{ prep:5, name:"First Cycle - Mountain Climbers", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"Power Squat", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"Plank", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"Burpees", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"Double Advanced Beginner"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"Double Advanced Beginner"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"Double Advanced Beginner"},
+{ prep:5, name:"Second Cycle - Mountain Climbers", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"Power Squat", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"Spiderman Push-up", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"Plank", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"Burpees", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"One-Leg Squat Touch -- Switch Leg", duration:32, session:"Double Advanced Beginner"},
+{ prep:5, name:"Hindu Push-Up", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"Reverse Plank", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"Plyo Split Squat", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"Double Advanced Beginner"},
+{ prep:5, name:"Grasshopper Push-Up", duration:30, session:"Double Advanced Beginner"},
+{ prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"Double Advanced Beginner"},
 ];
 
 const SESSION_ICONS = ["🔥","💪","⚡","🏃","🧘","🥊","🚀","🎯"];
@@ -3085,10 +3315,10 @@ const PREP_PHRASES = [
 const MID_PHRASES = [
   "Keep going, you're doing amazing!",
   "Stay focused, you're killing it!",
-  "Almost halfway there — don't stop now!",
+  "Almost there — don't stop now!",
   "You're on fire! Keep pushing!",
   "Great work! Stay in the zone!",
-  "Halfway there — stronger every second!",
+  "You can do it! — stronger every second!",
   "Push through it — nearly there!",
   "You're doing brilliantly, keep it up!",
 ];
@@ -3225,6 +3455,16 @@ const GOALS = [
   { id: "sessions-100", type: "total_sessions", threshold: 100, message: (names) => `${names} just hit 100 workouts total! 🚀` },
   { id: "hours-24h", type: "total_minutes", threshold: 24 * 60, message: (names) => `${names} logged 24 hours of exercise, all-time! 🔥` },
 ];
+
+// Unlike the fixed-threshold goals above, "did you just beat your own
+// week-streak record?" has a moving target — the threshold IS your
+// previous best, which keeps changing. That doesn't fit GOALS' simple
+// before-vs-fixed-number check, so it's handled as its own small check
+// in checkGoalsAndRender() below, using calcWeekStreak()/
+// calcBestWeekStreak() (see the Stats & History section further down).
+// This message template is still editable right here like any other:
+const WEEK_STREAK_RECORD_MESSAGE = (names, newStreak) =>
+  `${names} just set a new personal best: ${newStreak} weeks in a row! 🏅`;
 
 // The weekly minutes chart draws a target line at the lowest weekly_minutes
 // goal above — editing GOALS moves this line automatically. Since
