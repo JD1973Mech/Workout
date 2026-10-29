@@ -429,11 +429,11 @@
     <div class="bookend-toggles" id="user-toggles">
       <label class="bookend-toggle">
         <input type="checkbox" id="chk-user-j" checked onchange="onUserToggleChange('j')">
-        <span>👨 J</span>
+        <span>👨 Joris</span>
       </label>
       <label class="bookend-toggle">
         <input type="checkbox" id="chk-user-t" checked onchange="onUserToggleChange('t')">
-        <span>🧑 T</span>
+        <span>🧑 Tina</span>
       </label>
     </div>
 
@@ -624,8 +624,8 @@
   <div class="exercises-screen">
     <div class="history-user-toggle" id="history-user-toggle">
       <button class="stats-user-btn active" data-user="all" onclick="switchHistoryFilter('all')">All</button>
-      <button class="stats-user-btn" data-user="Joris" onclick="switchHistoryFilter('Joris')">🧑 Joris</button>
-      <button class="stats-user-btn" data-user="Tina" onclick="switchHistoryFilter('Tina')">👨 Tina</button>
+      <button class="stats-user-btn" data-user="Joris" onclick="switchHistoryFilter('Joris')">👨 Joris</button>
+      <button class="stats-user-btn" data-user="Tina" onclick="switchHistoryFilter('Tina')">🧑 Tina</button>
     </div>
     <button class="btn-csv-action" onclick="toggleAddSessionForm()" id="btn-add-session">➕ Log a forgotten session</button>
 
@@ -642,8 +642,8 @@
       </div>
 
       <div class="add-session-row">
-        <label><input type="checkbox" id="manual-user-j" checked> 🧑 Joris</label>
-        <label><input type="checkbox" id="manual-user-t"> 👨 Tina</label>
+        <label><input type="checkbox" id="manual-user-j" checked> 👨 Joris</label>
+        <label><input type="checkbox" id="manual-user-t"> 🧑 Tina</label>
       </div>
 
       <label class="add-session-label">How it felt (optional)</label>
@@ -910,9 +910,27 @@ function speak(text, onComplete) {
   // Wrap a word/phrase in **asterisks** to accentuate it — it's split out
   // into its own utterance with a slightly slower rate and higher pitch,
   // then queued right after the rest so it plays back-to-back.
-  const parts = text.split(/\*\*(.+?)\*\*/g).filter(p => p !== "");
-  parts.forEach((part, i) => {
+  const rawParts = text.split(/\*\*(.+?)\*\*/g).filter(p => p !== "");
+
+  // Defensive: a fragment with no letters/digits (e.g. a lone trailing
+  // "!") never becomes its own utterance — some voices read a
+  // punctuation-only utterance out by name ("exclamation mark") instead
+  // of just using it for intonation. Merge it into the previous part
+  // (or the next one, if it's first) instead.
+  const parts = [];
+  const emph = [];
+  rawParts.forEach((part, i) => {
     const emphasized = i % 2 === 1;
+    if (!/[a-zA-Z0-9]/.test(part) && parts.length) {
+      parts[parts.length - 1] += part;
+    } else {
+      parts.push(part);
+      emph.push(emphasized);
+    }
+  });
+
+  parts.forEach((part, i) => {
+    const emphasized = emph[i];
     const u = new SpeechSynthesisUtterance(part);
     u.lang = "en-US";
     if (voice) u.voice = voice;
@@ -1010,16 +1028,12 @@ function onUserToggleChange(who) {
   localStorage.setItem("userTChecked", String(userTChecked));
 }
 
-function renderSessionCards() {
-  buildSessions();
-  const container = document.getElementById("session-cards");
-  container.innerHTML = "";
-  container.style.cssText = "width:100%;max-width:472px;display:flex;flex-direction:column;gap:12px;";
-
-  // "Original 7 Minute" always comes first; everything else sorted by
-  // duration (shortest first), then by estimated intensity (lightest
-  // first) as a tiebreaker when two sessions take the same time.
-  const keys = Object.keys(sessions)
+// "Original 7 Minute" always comes first; everything else sorted by
+// duration (shortest first), then by estimated intensity (lightest
+// first) as a tiebreaker when two sessions take the same time. Shared by
+// the session cards screen and the List tab, so both always agree.
+function getSortedSessionNames() {
+  return Object.keys(sessions)
     .map(name => ({
       name,
       dur: sessionPreviewTotal(name, includeWarmup, includeCooldown).total,
@@ -1032,6 +1046,15 @@ function renderSessionCards() {
       return a.intensity - b.intensity;
     })
     .map(s => s.name);
+}
+
+function renderSessionCards() {
+  buildSessions();
+  const container = document.getElementById("session-cards");
+  container.innerHTML = "";
+  container.style.cssText = "width:100%;max-width:472px;display:flex;flex-direction:column;gap:12px;";
+
+  const keys = getSortedSessionNames();
 
   keys.forEach((name, i) => {
     const main = sessions[name];
@@ -1202,13 +1225,11 @@ function startPhase(idx, ph) {
       if (idx !== currentIdx || phase !== "prep") return;
       awaitingPrepSpeech = false;
       if (isSwitchEx) { advance(); return; }
-      // Reset to a short, clean "Three, Two, One" window now that speech
-      // is done — fewer numbers if this exercise's own prep budget was
-      // shorter than that, so a long announcement never stretches the
-      // countdown out past what the exercise was originally allotted.
-      seconds = Math.min(3, totalSeconds);
-      totalSeconds = seconds; // circle now fills/empties over just this short countdown
-      updateCircle();
+      // No reset here: `seconds` has been ticking down (floored at 1,
+      // see tick() below) the whole time the announcement was playing,
+      // so the circle just keeps shrinking smoothly from wherever it
+      // already is — no jump back to a "fresh" full circle. tick()'s
+      // normal beep/number logic takes over from the very next tick.
     });
   }
 
@@ -1613,6 +1634,7 @@ function renderStaticBlock(container, items, headerText, autoExpand) {
 }
 
 function renderList() {
+  buildSessions(); // make sure `sessions` is populated even if the session screen hasn't rendered yet
   const container = document.getElementById("list-items");
   container.innerHTML = "";
   container.style.cssText = "display:flex;flex-direction:column;gap:10px;width:100%;";
@@ -1622,61 +1644,52 @@ function renderList() {
 
   renderStaticBlock(container, WARMUP, "🔥 WARM-UP · EVERY SESSION", warmupRunning);
 
-  let lastSession = null;
-  let sessionNum = 0;
-  let group = null;        // the currently-open <div> of exercise items for this session
-  let countEl = null;      // that session's "N exercises" badge, updated as we go
-  let sessionExerciseCount = 0;
-  allWorkouts.forEach((w) => {
-    if (w.session !== lastSession) {
-      lastSession = w.session;
-      sessionNum = 0;
+  // Same order as the session selection screen (getSortedSessionNames):
+  // "Original 7 Minute" first, then shortest-to-longest, intensity as tiebreaker.
+  getSortedSessionNames().forEach(sessionName => {
+    const items = sessions[sessionName];
+    if (!items || !items.length) return;
 
-      // Auto-expand only the session currently mid-workout, so progress
-      // highlighting stays visible; every other session starts collapsed.
-      const isRunningThisSession = phase !== "idle" && phase !== "done" && selectedSession === w.session;
+    // Auto-expand only the session currently mid-workout, so progress
+    // highlighting stays visible; every other session starts collapsed.
+    const isRunningThisSession = phase !== "idle" && phase !== "done" && selectedSession === sessionName;
 
-      const sessionIntensity = estimateSessionIntensity(w.session);
-      const header = document.createElement("div");
-      header.className = "list-session-header" + (isRunningThisSession ? " expanded" : "");
-      header.innerHTML = `<span class="chevron">▶</span><span>${(w.session || "ALGEMEEN").toUpperCase()} ${sessionIntensity ? FACE_SCALE[sessionIntensity - 1] : ""}</span><span class="list-session-count"></span>`;
-      container.appendChild(header);
-      countEl = header.querySelector(".list-session-count");
+    const sessionIntensity = estimateSessionIntensity(sessionName);
+    const header = document.createElement("div");
+    header.className = "list-session-header" + (isRunningThisSession ? " expanded" : "");
+    header.innerHTML = `<span class="chevron">▶</span><span>${(sessionName || "ALGEMEEN").toUpperCase()} ${sessionIntensity ? FACE_SCALE[sessionIntensity - 1] : ""}</span><span class="list-session-count">${items.length} exercises</span>`;
+    container.appendChild(header);
 
-      const sessionGroup = document.createElement("div"); // fresh binding per session, for the closure below
-      sessionGroup.className = "list-session-group" + (isRunningThisSession ? " expanded" : "");
-      container.appendChild(sessionGroup);
-      header.onclick = () => {
-        header.classList.toggle("expanded");
-        sessionGroup.classList.toggle("expanded");
-      };
+    const sessionGroup = document.createElement("div");
+    sessionGroup.className = "list-session-group" + (isRunningThisSession ? " expanded" : "");
+    container.appendChild(sessionGroup);
+    header.onclick = () => {
+      header.classList.toggle("expanded");
+      sessionGroup.classList.toggle("expanded");
+    };
 
-      group = sessionGroup; // shared mutable reference used below to append this session's items
-      sessionExerciseCount = 0;
-    }
-    sessionNum++;
-    sessionExerciseCount++;
-    countEl.textContent = sessionExerciseCount + " exercises";
+    items.forEach((w, i) => {
+      const sessionNum = i + 1;
+      const runIdx = currentWorkouts.indexOf(w);
+      const isActive = phase !== "idle" && phase !== "done" &&
+        selectedSession === sessionName && runIdx !== -1 && runIdx === currentIdx;
+      const isDone = phase !== "idle" &&
+        selectedSession === sessionName && runIdx !== -1 && runIdx < currentIdx;
 
-    const runIdx = currentWorkouts.indexOf(w);
-    const isActive = phase !== "idle" && phase !== "done" &&
-      selectedSession === w.session && runIdx !== -1 && runIdx === currentIdx;
-    const isDone = phase !== "idle" &&
-      selectedSession === w.session && runIdx !== -1 && runIdx < currentIdx;
-
-    const item = document.createElement("div");
-    item.className = "list-item" + (isActive ? " active" : "") + (isDone ? " done-item" : "");
-    const numClass = isDone ? "list-num done-num" : isActive ? "list-num active-num" : "list-num";
-    const numContent = isDone ? "✓" : sessionNum;
-    item.innerHTML = `
-      <div class="${numClass}">${numContent}</div>
-      <div>
-        <div class="list-name">${displayName(w.name)} ${exerciseIntensityBadge(w.name)}</div>
-        <div class="list-meta">Prep: ${w.prep}s</div>
-      </div>
-      <div class="list-dur">${w.duration}s</div>
-    `;
-    group.appendChild(item);
+      const item = document.createElement("div");
+      item.className = "list-item" + (isActive ? " active" : "") + (isDone ? " done-item" : "");
+      const numClass = isDone ? "list-num done-num" : isActive ? "list-num active-num" : "list-num";
+      const numContent = isDone ? "✓" : sessionNum;
+      item.innerHTML = `
+        <div class="${numClass}">${numContent}</div>
+        <div>
+          <div class="list-name">${displayName(w.name)} ${exerciseIntensityBadge(w.name)}</div>
+          <div class="list-meta">Prep: ${w.prep}s</div>
+        </div>
+        <div class="list-dur">${w.duration}s</div>
+      `;
+      sessionGroup.appendChild(item);
+    });
   });
 
   renderStaticBlock(container, COOLDOWN, "🧊 COOL-DOWN · EVERY SESSION", cooldownRunning);
@@ -2483,7 +2496,7 @@ function renderHistoryEditor() {
     const d = new Date(h.date);
     const dateLabel = d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
     const ratingLabel = h.rating ? FACE_SCALE[h.rating - 1] : "unrated";
-    const userLabel = h.user === "Tina" ? "👨 Tina" : "🧑 Joris";
+    const userLabel = h.user === "Tina" ? "🧑 Tina" : "👨 Joris";
     const idx = workoutHistory.indexOf(h);
     return `
       <div class="history-row">
@@ -3229,7 +3242,7 @@ let allWorkouts = [
   { prep:5, name:"One-Leg Bridge -- Switch Leg",           duration:32, session:"Short Cycle - Medium" },
   { prep:5, name:"One-Leg Squat -- Switch Leg",            duration:32, session:"Short Cycle - Medium" },
   { prep:5, name:"Reverse Lunge & Knee Lift",          duration:30, session:"Short Cycle - Medium" },
-{ prep:5, name:"First Cycle - Side-to-side Shuffle", duration:30, session:"Double 8 Minute Workout"},
+{ prep:10, name:"First Cycle - Side-to-side Shuffle", duration:30, session:"Double 8 Minute Workout"},
 { prep:5, name:"Wall Sit", duration:30, session:"Double 8 Minute Workout"},
 { prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"Double 8 Minute Workout"},
 { prep:5, name:"Superman", duration:30, session:"Double 8 Minute Workout"},
@@ -3241,7 +3254,7 @@ let allWorkouts = [
 { prep:5, name:"Power Squat", duration:30, session:"Double 8 Minute Workout"},
 { prep:5, name:"Spiderman Push-up", duration:30, session:"Double 8 Minute Workout"},
 { prep:5, name:"Plank", duration:30, session:"Double 8 Minute Workout"},
-{ prep:5, name:"Second Cycle - Side-to-side Shuffle", duration:30, session:"Double 8 Minute Workout"},
+{ prep:10, name:"Second Cycle - Side-to-side Shuffle", duration:30, session:"Double 8 Minute Workout"},
 { prep:5, name:"Wall Sit", duration:30, session:"Double 8 Minute Workout"},
 { prep:5, name:"Staggered Push-up -- Switch Arm", duration:32, session:"Double 8 Minute Workout"},
 { prep:5, name:"Superman", duration:30, session:"Double 8 Minute Workout"},
@@ -3253,7 +3266,7 @@ let allWorkouts = [
 { prep:5, name:"Power Squat", duration:30, session:"Double 8 Minute Workout"},
 { prep:5, name:"Spiderman Push-up", duration:30, session:"Double 8 Minute Workout"},
 { prep:5, name:"Plank", duration:30, session:"Double 8 Minute Workout"},
-{ prep:5, name:"First Cycle - Mountain Climbers", duration:30, session:"Double Advanced Beginner"},
+{ prep:10, name:"First Cycle - Mountain Climbers", duration:30, session:"Double Advanced Beginner"},
 { prep:5, name:"Power Squat", duration:30, session:"Double Advanced Beginner"},
 { prep:5, name:"Spiderman Push-up", duration:30, session:"Double Advanced Beginner"},
 { prep:5, name:"Plank", duration:30, session:"Double Advanced Beginner"},
@@ -3265,7 +3278,7 @@ let allWorkouts = [
 { prep:5, name:"One-Leg Squat --Switch Leg", duration:32, session:"Double Advanced Beginner"},
 { prep:5, name:"Grasshopper Push-Up", duration:30, session:"Double Advanced Beginner"},
 { prep:5, name:"Full Side Plank -- Switch Side", duration:33, session:"Double Advanced Beginner"},
-{ prep:5, name:"Second Cycle - Mountain Climbers", duration:30, session:"Double Advanced Beginner"},
+{ prep:10, name:"Second Cycle - Mountain Climbers", duration:30, session:"Double Advanced Beginner"},
 { prep:5, name:"Power Squat", duration:30, session:"Double Advanced Beginner"},
 { prep:5, name:"Spiderman Push-up", duration:30, session:"Double Advanced Beginner"},
 { prep:5, name:"Plank", duration:30, session:"Double Advanced Beginner"},
@@ -3302,13 +3315,13 @@ const COOLDOWN = [
 
 // Varied phrases for announcing next exercise
 const PREP_PHRASES = [
-  (name) => `Get ready for **${name}**!`,
-  (name) => `Up next — **${name}**! Let's go!`,
-  (name) => `Time for **${name}**! You've got this!`,
-  (name) => `Next up, **${name}**! Stay strong!`,
+  (name) => `Get ready for **${name}!**`,
+  (name) => `Up next — **${name}!** Let's go!`,
+  (name) => `Time for **${name}!** You've got this!`,
+  (name) => `Next up, **${name}!** Stay strong!`,
   (name) => `**${name}** coming up!`,
-  (name) => `Get set for **${name}**!`,
-  (name) => `**${name}**! Let's crush it!`,
+  (name) => `Get set for **${name}!**`,
+  (name) => `**${name}!** Let's crush it!`,
 ];
 
 // Mid-workout random motivations (called twice per session at ~33% and ~66%)
