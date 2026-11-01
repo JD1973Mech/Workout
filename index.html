@@ -784,6 +784,9 @@ let seconds = 0;
 let totalSeconds = 0;
 let running = false;
 let awaitingPrepSpeech = false; // true while a prep announcement is still being spoken, before the 3-2-1 countdown starts
+let prepSpeechToken = 0;        // bumped on every startPhase() so a late/stale speech callback from an earlier exercise can't release the wrong wait
+let prepWaitTicks = 0;          // seconds spent waiting for the current announcement to finish...
+let prepWaitMaxTicks = 0;       // ...and the longest we'll ever wait before giving up (watchdog — see tick())
 let timerInterval = null;
 let currentTab = "timer";
 
@@ -899,9 +902,21 @@ function getVoice() {
       || null;
 }
 
+// Utterances have to stay referenced until they finish speaking: browsers
+// (iOS Safari and Chrome in particular) may garbage-collect an utterance
+// that nothing points to anymore, in which case its "end" event never
+// fires and anything waiting on it waits forever.
+let liveUtterances = [];
+
 function speak(text, onComplete) {
-  if (!window.speechSynthesis) return;
+  // No speech engine at all: nothing to wait for, so report "done" right
+  // away (asynchronously) instead of leaving a caller waiting forever.
+  if (!window.speechSynthesis) {
+    if (onComplete) setTimeout(onComplete, 0);
+    return;
+  }
   window.speechSynthesis.cancel();
+  liveUtterances = [];
   const voice = getVoice();
   const baseRate = 1.0;     // natural pace
   const basePitch = 1.25;   // bright, upbeat tone
@@ -929,6 +944,25 @@ function speak(text, onComplete) {
     }
   });
 
+  // Nothing to say (empty text): report "done" right away.
+  if (!parts.length) {
+    if (onComplete) setTimeout(onComplete, 0);
+    return;
+  }
+
+  // onComplete fires exactly once, after the very last queued part
+  // finishes — this is what lets a caller safely chain a second speak()
+  // call (or a sound effect) without cutting this one off mid-sentence.
+  // It also fires if the engine reports a genuine error. It does NOT fire
+  // for "interrupted"/"canceled": that just means a newer speak() call
+  // deliberately took over, and the caller has moved on.
+  let completed = false;
+  const complete = () => {
+    if (completed) return;
+    completed = true;
+    if (onComplete) onComplete();
+  };
+
   parts.forEach((part, i) => {
     const emphasized = emph[i];
     const u = new SpeechSynthesisUtterance(part);
@@ -937,10 +971,14 @@ function speak(text, onComplete) {
     u.rate = emphasized ? Math.max(0.5, baseRate * 0.85) : baseRate;
     u.pitch = emphasized ? Math.min(2, basePitch + 0.2) : basePitch;
     u.volume = emphasized ? 1.0 : baseVolume;
-    // onComplete fires once, after the very last queued part finishes —
-    // this is what lets a caller safely chain a second speak() call
-    // (or a sound effect) without cutting this one off mid-sentence.
-    if (onComplete && i === parts.length - 1) u.onend = onComplete;
+    if (i === parts.length - 1) {
+      u.onend = complete;
+      u.onerror = (e) => {
+        if (e && (e.error === "interrupted" || e.error === "canceled")) return;
+        complete();
+      };
+    }
+    liveUtterances.push(u); // keep a reference so it isn't garbage-collected mid-speech
     window.speechSynthesis.speak(u);
   });
 }
@@ -1178,6 +1216,7 @@ function startPhase(idx, ph) {
   totalSeconds = secs;
   running = true;
   awaitingPrepSpeech = false;
+  const myToken = ++prepSpeechToken;
 
   updateCircle();
   updateExerciseInfo();
@@ -1219,21 +1258,31 @@ function startPhase(idx, ph) {
     // itself ticks and animates right away, below, so it never looks
     // frozen while the announcement plays.
     awaitingPrepSpeech = true;
-    speak(introText, () => {
-      // Guard: the person may have paused, skipped, or moved on while
-      // the announcement was still playing.
-      if (idx !== currentIdx || phase !== "prep") return;
-      awaitingPrepSpeech = false;
-      if (isSwitchEx) { advance(); return; }
-      // No reset here: `seconds` has been ticking down (floored at 1,
-      // see tick() below) the whole time the announcement was playing,
-      // so the circle just keeps shrinking smoothly from wherever it
-      // already is — no jump back to a "fresh" full circle. tick()'s
-      // normal beep/number logic takes over from the very next tick.
-    });
+    prepWaitTicks = 0;
+    // Watchdog limit: roughly how long this text could plausibly take to
+    // speak (~100ms per character, plus a margin). If the speech engine
+    // never reports back — which happens on iOS Safari — tick() gives up
+    // waiting after this many seconds instead of blocking forever.
+    prepWaitMaxTicks = Math.ceil((introText.length * 100 + 2500) / 1000);
+    speak(introText, () => releasePrepWait(myToken));
   }
 
   timerInterval = setInterval(tick, 1000);
+}
+
+// Called when a prep announcement is over — either the speech engine
+// reported it finished (normal), or tick()'s watchdog gave up waiting
+// (the engine never reported back). Safe to call more than once: only the
+// first call for the current announcement does anything. No reset of
+// `seconds` here: it has been ticking down (floored at 1, see tick())
+// the whole time, so the circle just keeps shrinking smoothly from
+// wherever it already is, and tick()'s normal beep/number logic takes
+// over from the very next tick.
+function releasePrepWait(token) {
+  if (token !== prepSpeechToken || phase !== "prep" || !awaitingPrepSpeech) return;
+  awaitingPrepSpeech = false;
+  const w = currentWorkouts[currentIdx];
+  if (w && /^switch/i.test(w.name)) advance(); // "Switch..." exercises skip the countdown entirely
 }
 
 function tick() {
@@ -1247,10 +1296,18 @@ function tick() {
   // Still speaking the prep announcement: keep the circle visibly
   // ticking down (so it never looks frozen) but don't beep/speak numbers
   // and don't let it actually finish — floor at 1 and wait. The
-  // speak() callback above takes over for real once the announcement ends.
+  // speak() callback (see startPhase) normally releases the wait once the
+  // announcement ends.
+  //
+  // WATCHDOG: some speech engines (notably iOS Safari) occasionally never
+  // report that an utterance finished. Without a safety net the timer
+  // would sit at 1 forever and block the whole workout, so after the
+  // longest plausible speaking time we stop waiting and carry on anyway.
   if (phase === "prep" && awaitingPrepSpeech) {
     if (seconds > 1) seconds--;
     updateCircle();
+    prepWaitTicks++;
+    if (prepWaitTicks >= prepWaitMaxTicks) releasePrepWait(prepSpeechToken);
     return;
   }
 
@@ -1510,6 +1567,7 @@ function togglePause() {
 function stopWorkout() {
   clearInterval(timerInterval);
   awaitingPrepSpeech = false;
+  prepSpeechToken++; // a late callback from the cancelled announcement must not touch the next workout
   if (window.speechSynthesis) window.speechSynthesis.cancel();
   showSessions();
 }
