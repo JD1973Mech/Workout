@@ -376,7 +376,7 @@
     color:#fff; font-family:var(--font-ui); font-size:13px; font-weight:800; letter-spacing:1.5px;
     cursor:pointer;
   }
-  .eval-saved { color:var(--green); font-size:13px; font-weight:700; }
+  .btn-save-eval.standalone { margin-top:20px; max-width:320px; padding:14px; font-size:14px; }
 
   /* Pulse animation */
   @keyframes pulse-ring {
@@ -503,8 +503,6 @@
     <div id="achievement-messages"></div>
 
     <div id="eval-container"></div>
-
-    <button class="btn-start-session" onclick="showSessions()" style="margin-top:20px; width:280px;">↩ BACK TO SESSIONS</button>
   </div>
 
 </div>
@@ -553,7 +551,7 @@
         </div>
 
         <div class="chart-card">
-          <div class="chart-title">WEEKLY MINUTES — core / warm-up / cool-down (number above bar = sessions)</div>
+          <div class="chart-title">WEEKLY MINUTES — core / warm-up / cool-down (number above bar = sessions, scroll for history)</div>
           <div id="weekly-chart-Joris"></div>
         </div>
 
@@ -587,7 +585,7 @@
         </div>
 
         <div class="chart-card">
-          <div class="chart-title">WEEKLY MINUTES — core / warm-up / cool-down (number above bar = sessions)</div>
+          <div class="chart-title">WEEKLY MINUTES — core / warm-up / cool-down (number above bar = sessions, scroll for history)</div>
           <div id="weekly-chart-Tina"></div>
         </div>
 
@@ -1504,20 +1502,25 @@ function finishWorkout() {
 // Builds one evaluation card per person who took part in this session.
 // With one person it's unlabeled; with both, each card is tagged so
 // it's clear whose rating is whose.
+// The rating that's pre-selected for everyone ("average"). Change the
+// number here (1 = 😌 light … 5 = 🥵 heavy) to propose something else.
+const DEFAULT_RATING = 3;
+let evalUsers = []; // who the rating cards on the done screen are for
+
 function renderEvalUI(users) {
+  evalUsers = users.slice();
   currentRatings = {};
+  users.forEach(u => { currentRatings[u] = DEFAULT_RATING; });
   const container = document.getElementById("eval-container");
   container.innerHTML = users.map(u => `
     <div class="eval-box">
       <div class="eval-label">${users.length > 1 ? `💪 ${u} — ` : ""}HOW HEAVY DID THAT FEEL?</div>
       <div class="eval-scale-labels"><span>LIGHT</span><span>HEAVY</span></div>
       <div class="sweat-row">
-        ${[1,2,3,4,5].map(v => `<span class="sweat" data-user="${u}" data-v="${v}">${FACE_SCALE[v-1]}</span>`).join("")}
+        ${[1,2,3,4,5].map(v => `<span class="sweat${v === DEFAULT_RATING ? " filled" : ""}" data-user="${u}" data-v="${v}">${FACE_SCALE[v-1]}</span>`).join("")}
       </div>
-      <button class="btn-save-eval" data-user="${u}">SAVE RATING</button>
-      <div class="eval-saved" id="eval-saved-${u}" style="display:none">✓ Saved — nice work!</div>
     </div>
-  `).join("");
+  `).join("") + `<button class="btn-save-eval standalone" id="btn-save-eval">${users.length > 1 ? "SAVE RATINGS" : "SAVE RATING"}</button>`;
 }
 
 // Delegated listener (attached once) — handles clicks for however many
@@ -1533,21 +1536,28 @@ document.getElementById("eval-container").addEventListener("click", e => {
     });
     return;
   }
-  const saveBtn = e.target.closest(".btn-save-eval");
-  if (saveBtn) saveEvaluationForUser(saveBtn.dataset.user);
+  if (e.target.closest(".btn-save-eval")) saveAllEvaluations();
 });
 
-function saveEvaluationForUser(user) {
-  const rating = currentRatings[user];
+// Stores one person's rating on the entry that was just logged for them.
+// The rating normally comes from the done screen's picker; an explicit
+// one can be passed in instead.
+function saveEvaluationForUser(user, ratingOverride) {
+  const rating = ratingOverride != null ? ratingOverride : currentRatings[user];
   const idx = lastEntryIndexByUser[user];
   if (!rating || idx === undefined || !workoutHistory[idx]) return;
   workoutHistory[idx].rating = rating;
   saveHistoryToStorage();
-  updateStatsDisplay();
-  const savedEl = document.getElementById(`eval-saved-${user}`);
-  if (savedEl) savedEl.style.display = "block";
-  const btn = document.querySelector(`.btn-save-eval[data-user="${user}"]`);
-  if (btn) btn.style.display = "none";
+}
+
+// The one SAVE button on the done screen: saves everyone's rating, then
+// goes straight to the Stats screen (and resets the Timer tab back to the
+// session list, so coming back to it later doesn't show a stale done screen).
+function saveAllEvaluations() {
+  evalUsers.forEach(u => saveEvaluationForUser(u));
+  showSessions();
+  if (evalUsers.length) switchStatsUser(evalUsers[0]); // on a phone: show someone who just trained
+  switchTab("stats");
 }
 
 function togglePause() {
@@ -2171,7 +2181,7 @@ const SECTION_COLORS = { core: "#10B981", warmup: "#F59E0B", cooldown: "#3B82F6"
 // Older history entries saved before the breakdown existed count
 // entirely as core minutes, since that's the bulk of any session anyway.
 // Shared by renderWeeklyMinutesChart() and getSharedWeeklyAxisMax().
-function getRecentWeeksForUser(user) {
+function getWeeklyTotalsForUser(user) {
   const userHistory = historyForUser(user);
   const weeks = new Map(); // key: week-start date string -> { weekStart, core, warmup, cooldown, sessions }
   userHistory.forEach(h => {
@@ -2189,22 +2199,25 @@ function getRecentWeeksForUser(user) {
     }
     entry.sessions += 1;
   });
-  const sorted = Array.from(weeks.values()).sort((a, b) => a.weekStart - b.weekStart);
-  return sorted.slice(-8); // most recent 8 weeks for this person
+  return Array.from(weeks.values()).sort((a, b) => a.weekStart - b.weekStart); // every week, oldest to newest
 }
 
 // Same y-axis top for both people's Weekly Minutes charts, so a bar's
 // height means the same thing whichever chart it's in and the two are
 // directly comparable side by side (e.g. on the iPad two-column layout).
-// Computed from whichever of the two has the heavier week, rounded up to
-// a clean 10-minute step, and never below the core goal target line.
+// Computed from whichever of the two has the heaviest week EVER (the
+// charts scroll through all history now), rounded up to a clean 10-minute
+// step, and never below the core goal target line.
 function getSharedWeeklyAxisMax() {
   const GRID_STEP = 10;
-  const allWeeks = ["Joris", "Tina"].flatMap(getRecentWeeksForUser);
+  const allWeeks = ["Joris", "Tina"].flatMap(getWeeklyTotalsForUser);
   const maxMinutes = Math.max(...allWeeks.map(w => w.core + w.warmup + w.cooldown), 1);
   return Math.max(GRID_STEP, CHART_WEEKLY_TARGET, Math.ceil(maxMinutes / GRID_STEP) * GRID_STEP);
 }
 
+// Horizontally scrollable like the workload trend chart: the y-axis sits
+// in its own fixed column, the bars scroll next to it, and it opens
+// scrolled to the most recent week so you scroll left to go back in time.
 function renderWeeklyMinutesChart(user) {
   const container = document.getElementById(`weekly-chart-${user}`);
   const userHistory = historyForUser(user);
@@ -2213,15 +2226,16 @@ function renderWeeklyMinutesChart(user) {
     return;
   }
 
-  const recent = getRecentWeeksForUser(user);
+  const weeks = getWeeklyTotalsForUser(user);
 
-  const W = 320, H = 150;
-  const padL = 26, padR = 8, padTop = 26, padBottom = 22;
-  const chartW = W - padL - padR;
+  // Same H / padTop / padBottom / axis width as the workload chart above it.
+  const H = 150;
+  const AXIS_W = 26;               // fixed, never-scrolling y-axis column
+  const padL2 = 10, padR = 16, padTop = 26, padBottom = 22;
   const chartH = H - padTop - padBottom;
-  const n = recent.length;
-  const gap = 10;
-  const barW = Math.max(14, (chartW - gap * (n - 1)) / n);
+  const n = weeks.length;
+  const barW = 22, gap = 12;       // fixed per-bar spacing — the chart grows wider and scrolls instead of squeezing bars
+  const scrollW = padL2 + n * (barW + gap) + padR;
 
   // Shared across both people's charts (see getSharedWeeklyAxisMax) — not
   // recomputed from just this user's own weeks — so bar heights are
@@ -2229,25 +2243,24 @@ function renderWeeklyMinutesChart(user) {
   const GRID_STEP = 10;
   const axisMax = getSharedWeeklyAxisMax();
 
+  // Gridlines run across the scrolling area (x2="100%" keeps them full
+  // width even when there are only a few bars); their numbers live in the
+  // fixed axis column.
   let grid = "";
+  let axisLabels = "";
   for (let v = GRID_STEP; v <= axisMax; v += GRID_STEP) {
     const gy = padTop + chartH - (v / axisMax) * chartH;
-    grid += `
-      <line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W - padR}" y2="${gy.toFixed(1)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="2,3" />
-      <text x="${(padL - 6).toFixed(1)}" y="${(gy + 3).toFixed(1)}" text-anchor="end" class="chart-bar-label">${v}</text>
-    `;
+    grid += `<line x1="0" y1="${gy.toFixed(1)}" x2="100%" y2="${gy.toFixed(1)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="2,3" />`;
+    axisLabels += `<text x="${AXIS_W - 6}" y="${(gy + 3).toFixed(1)}" text-anchor="end" class="chart-bar-label">${v}</text>`;
   }
 
-  // Target reference line — distinct from the gridlines, with its own label.
+  // Target reference line — distinct from the gridlines; explained in the legend below.
   const targetY = padTop + chartH - (CHART_WEEKLY_TARGET / axisMax) * chartH;
-  grid += `
-    <line x1="${padL}" y1="${targetY.toFixed(1)}" x2="${W - padR}" y2="${targetY.toFixed(1)}" stroke="#EF4444" stroke-width="1.5" stroke-dasharray="5,3" />
-    <text x="${W - padR}" y="${(targetY - 4).toFixed(1)}" text-anchor="end" class="chart-bar-label" style="fill:#EF4444; font-weight:700;">🎯 ${CHART_WEEKLY_TARGET}m core goal</text>
-  `;
+  grid += `<line x1="0" y1="${targetY.toFixed(1)}" x2="100%" y2="${targetY.toFixed(1)}" stroke="#EF4444" stroke-width="1.5" stroke-dasharray="5,3" />`;
 
   let bars = "";
-  recent.forEach((w, i) => {
-    const x = padL + i * (barW + gap);
+  weeks.forEach((w, i) => {
+    const x = padL2 + i * (barW + gap);
     const cx = x + barW / 2;
     const total = w.core + w.warmup + w.cooldown;
 
@@ -2258,33 +2271,45 @@ function renderWeeklyMinutesChart(user) {
       const segH = (minutes / axisMax) * chartH;
       const segY = padTop + chartH - ((cumulative + minutes) / axisMax) * chartH;
       cumulative += minutes;
-      bars += `<rect x="${x.toFixed(1)}" y="${segY.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(1, segH).toFixed(1)}" fill="${SECTION_COLORS[section]}" />`;
+      bars += `<rect x="${x.toFixed(1)}" y="${segY.toFixed(1)}" width="${barW}" height="${Math.max(1, segH).toFixed(1)}" fill="${SECTION_COLORS[section]}" />`;
     });
 
     const topY = padTop + chartH - (total / axisMax) * chartH;
     const label = `${w.weekStart.getDate()}/${w.weekStart.getMonth() + 1}`;
     bars += `
       <text x="${cx.toFixed(1)}" y="${(topY - 8).toFixed(1)}" text-anchor="middle" class="chart-bar-value">${w.sessions}</text>
-      <text x="${cx.toFixed(1)}" y="${(H - 6).toFixed(1)}" text-anchor="middle" class="chart-bar-label">${label}</text>
+      <text x="${cx.toFixed(1)}" y="${H - 6}" text-anchor="middle" class="chart-bar-label">${label}</text>
     `;
   });
 
   const legend = `
-    <div class="pie-legend-row" style="justify-content:center; gap:14px; margin-top:4px;">
+    <div class="pie-legend-row" style="justify-content:center; gap:14px; margin-top:4px; flex-wrap:wrap;">
       <span style="display:flex; align-items:center; gap:4px;"><span class="pie-legend-dot" style="background:${SECTION_COLORS.core}"></span>Core</span>
       <span style="display:flex; align-items:center; gap:4px;"><span class="pie-legend-dot" style="background:${SECTION_COLORS.warmup}"></span>Warm-up</span>
       <span style="display:flex; align-items:center; gap:4px;"><span class="pie-legend-dot" style="background:${SECTION_COLORS.cooldown}"></span>Cool-down</span>
+      <span style="display:flex; align-items:center; gap:4px;"><span style="width:14px; height:0; border-top:1.5px dashed #EF4444;"></span>🎯 ${CHART_WEEKLY_TARGET}m core goal</span>
     </div>
   `;
 
   container.innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block;">
-      ${grid}
-      <line x1="${padL}" y1="${padTop + chartH}" x2="${W - padR}" y2="${padTop + chartH}" stroke="var(--border)" stroke-width="1" />
-      ${bars}
-    </svg>
+    <div style="display:flex; align-items:flex-start;">
+      <svg width="${AXIS_W}" height="${H}" style="flex-shrink:0; display:block;">
+        ${axisLabels}
+      </svg>
+      <div class="chart-scroll" id="weekly-scroll-${user}">
+        <svg width="${scrollW}" height="${H}" style="min-width:100%;">
+          ${grid}
+          <line x1="0" y1="${padTop + chartH}" x2="100%" y2="${padTop + chartH}" stroke="var(--border)" stroke-width="1" />
+          ${bars}
+        </svg>
+      </div>
+    </div>
     ${legend}
   `;
+
+  // Start scrolled to the right, showing the most recent week by default.
+  const scrollEl = document.getElementById(`weekly-scroll-${user}`);
+  if (scrollEl) scrollEl.scrollLeft = scrollEl.scrollWidth;
 }
 
 // ─── SESSION FREQUENCY CHART (donut: how many times each session was done) ──
